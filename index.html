@@ -5,522 +5,1238 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>像素抽卡</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { height:100%; overflow:hidden; }
-  body {
-    background:#141428;
-    font-family:"Courier New",Consolas,monospace;
-    display:flex; align-items:center; justify-content:center;
-    user-select:none; -webkit-user-select:none; touch-action:manipulation;
-  }
-  #wrap { position:relative; width:100vw; height:100vh; max-width:820px; overflow:hidden; }
-  canvas { display:block; width:100%; height:100%; image-rendering:pixelated; }
-
-  #scoreBox {
-    position:absolute; top:12px; right:12px; z-index:5;
-    background:rgba(10,10,22,.82); border:3px solid #000;
-    box-shadow:3px 3px 0 #000, inset -2px -2px 0 rgba(0,0,0,.5), inset 2px 2px 0 rgba(255,255,255,.15);
-    padding:7px 10px 6px; text-align:right; min-width:104px;
-  }
-  #scoreBox .lb { font-size:9px; letter-spacing:2px; color:#8a8ab0; }
-  #scoreBox .vl { font-size:24px; font-weight:bold; color:#ffe066; text-shadow:2px 2px 0 #000; line-height:1.05; }
-  #scoreBox .sub { font-size:9px; color:#6f6f92; margin-top:2px; }
-
-  #tip {
-    position:absolute; top:96px; left:0; right:0; z-index:4;
-    text-align:center; font-size:11px; letter-spacing:2px; color:#9a9ac4;
-    pointer-events:none; padding:0 12px;
-  }
-
-  #btn {
-    position:absolute; left:50%; bottom:26px; transform:translateX(-50%); z-index:5;
-    padding:12px 26px; font-family:inherit; font-size:15px; font-weight:bold; letter-spacing:3px;
-    color:#fff; background:#d24a4a; cursor:pointer;
-    border:3px solid #000; box-shadow:4px 4px 0 #000, inset -3px -3px 0 rgba(0,0,0,.35), inset 3px 3px 0 rgba(255,255,255,.25);
-  }
-  #btn:disabled { background:#4a4a5e; color:#888; cursor:not-allowed; }
-
-  #closeBtn {
-    position:absolute; z-index:6; display:none;
-    padding:8px 10px; font-family:inherit; font-size:11px; font-weight:bold; letter-spacing:1px;
-    color:#fff; background:#2b2b3d; cursor:pointer;
-    border:3px solid #000; box-shadow:3px 3px 0 #000, inset -2px -2px 0 rgba(0,0,0,.4), inset 2px 2px 0 rgba(255,255,255,.2);
-  }
-  #closeBtn:hover { background:#3d3d54; }
-
-  #dex {
-    position:absolute; left:10px; bottom:16px; z-index:5;
-    background:rgba(10,10,22,.72); border:2px solid #000; padding:6px 7px; font-size:9px; color:#9a9ac4;
-  }
-  #dex div { margin:1px 0; }
-  #restart {
-    position:fixed; top:12px; left:12px; z-index:40;
-    padding:6px 10px; font-family:inherit; font-size:11px; font-weight:bold;
-    letter-spacing:1px; color:#ffd7d7; background:#2a0d12; cursor:pointer;
-    border:2px solid #000; box-shadow:2px 2px 0 #000, inset -2px -2px 0 rgba(0,0,0,.4), inset 2px 2px 0 rgba(255,255,255,.18);
-  }
-  #restart:hover { background:#4a1420; }
-  #restart:active { transform:translate(2px,2px); box-shadow:none; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; overflow:hidden; }
+body {
+background:#ffffff;
+font-family:"Courier New",Consolas,monospace;
+display:flex; align-items:center; justify-content:center;
+user-select:none; -webkit-user-select:none; touch-action:manipulation;
+}
+#wrap { position:relative; width:100vw; height:100vh; max-width:820px; overflow:hidden; background:#ffffff; }
+canvas { display:block; width:100%; height:100%; image-rendering:pixelated; }
+#scoreBox {
+position:absolute; top:12px; right:12px; z-index:5;
+background:rgba(255,255,255,.9); border:3px solid #000;
+box-shadow:3px 3px 0 #000, inset -2px -2px 0 rgba(0,0,0,.12), inset 2px 2px 0 rgba(255,255,255,.9);
+padding:7px 10px 6px; text-align:right; min-width:104px;
+}
+#scoreBox .lb { font-size:9px; letter-spacing:2px; color:#6a6a86; }
+#scoreBox .vl { font-size:24px; font-weight:bold; color:#1a1a2c; text-shadow:1px 1px 0 #ccc; line-height:1.05; }
+#scoreBox .sub { font-size:9px; color:#6f6f92; margin-top:2px; }
+#tip {
+position:absolute; top:96px; left:0; right:0; z-index:4;
+text-align:center; font-size:11px; letter-spacing:2px; color:#44445e;
+pointer-events:none; padding:0 12px;
+}
+#btn {
+position:absolute; left:50%; bottom:26px; transform:translateX(-50%); z-index:5;
+padding:12px 26px; font-family:inherit; font-size:15px; font-weight:bold; letter-spacing:3px;
+color:#fff; background:#d24a4a; cursor:pointer;
+border:3px solid #000; box-shadow:4px 4px 0 #000, inset -3px -3px 0 rgba(0,0,0,.35), inset 3px 3px 0 rgba(255,255,255,.25);
+}
+#btn:disabled { background:#c9c9d4; color:#666; cursor:not-allowed; }
+#closeBtn {
+position:absolute; z-index:6; display:none;
+padding:8px 10px; font-family:inherit; font-size:11px; font-weight:bold; letter-spacing:1px;
+color:#fff; background:#2b2b3d; cursor:pointer;
+border:3px solid #000; box-shadow:3px 3px 0 #000, inset -2px -2px 0 rgba(0,0,0,.4), inset 2px 2px 0 rgba(255,255,255,.2);
+}
+#closeBtn:hover { background:#3d3d54; }
+#dex {
+position:absolute; left:10px; bottom:16px; z-index:5;
+background:rgba(255,255,255,.85); border:2px solid #000; padding:6px 7px; font-size:9px; color:#3a3a52;
+}
+#dex div { margin:1px 0; }
+#restart {
+position:fixed; top:12px; left:12px; z-index:40;
+padding:6px 10px; font-family:inherit; font-size:11px; font-weight:bold;
+letter-spacing:1px; color:#ffd7d7; background:#2a0d12; cursor:pointer;
+border:2px solid #000; box-shadow:2px 2px 0 #000, inset -2px -2px 0 rgba(0,0,0,.4), inset 2px 2px 0 rgba(255,255,255,.18);
+}
+#restart:hover { background:#4a1420; }
+#restart:active { transform:translate(2px,2px); box-shadow:none; }
 </style>
 </head>
 <body>
-  <button id="restart">重新开始</button>
+<button id="restart">重新开始</button>
 <div id="wrap">
-  <canvas id="cv"></canvas>
-  <div id="scoreBox">
-    <div class="lb">SCORE</div>
-    <div class="vl" id="score">0</div>
-    <div class="sub" id="sub">牌堆 100/100</div>
-  </div>
-  <div id="tip">点击下方按钮开始洗牌（100 张）</div>
-  <button id="closeBtn">收起 ✕</button>
-  <button id="btn">抽 卡</button>
-  <div id="dex"></div>
+<canvas id="cv"></canvas>
+<div id="scoreBox">
+<div class="lb">SCORE</div>
+<div class="vl" id="score">0</div>
+<div class="sub" id="sub">牌堆 100/100</div>
 </div>
-
+<div id="tip">点击下方按钮开始洗牌（100 张）</div>
+<button id="closeBtn">收起 ✕</button>
+<button id="btn">抽 卡</button>
+<div id="dex"></div>
+</div>
 <script>
 (function () {
-  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-  const wrap = document.getElementById('wrap');
-  const btn = document.getElementById('btn');
-  const closeBtn = document.getElementById('closeBtn');
-  const scoreEl = document.getElementById('score');
-  const subEl = document.getElementById('sub');
-  const tipEl = document.getElementById('tip');
-  const dexEl = document.getElementById('dex');
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const wrap = document.getElementById('wrap');
+const btn = document.getElementById('btn');
+const closeBtn = document.getElementById('closeBtn');
+const scoreEl = document.getElementById('score');
+const subEl = document.getElementById('sub');
+const tipEl = document.getElementById('tip');
+const dexEl = document.getElementById('dex');
+// 六档品质：白1 绿2 蓝3 紫4 橙5 红6（概率 34/25/20/15/5/1 %）
+const RAR = [
+{ name:'白', score:1, color:'#e6e6e6', ink:'#333' },
+{ name:'绿', score:2, color:'#4ac86a', ink:'#0d3316' },
+{ name:'蓝', score:3, color:'#3a8ee6', ink:'#0b2545' },
+{ name:'紫', score:4, color:'#9a55d6', ink:'#2d1247' },
+{ name:'橙', score:5, color:'#f2913a', ink:'#4a2706' },
+{ name:'红', score:6, color:'#e24141', ink:'#450c0c' }
+];
+const DECK_SIZE = 100;
+let   remain = DECK_SIZE;
+const FAN_SIZE  = 5;
+let W = 0, H = 0, CW = 0, CH = 0, dpr = 1;
+function resize() {
+dpr = Math.min(window.devicePixelRatio || 1, 2);
+W = wrap.clientWidth; H = wrap.clientHeight;
+cv.width = W * dpr; cv.height = H * dpr;
+cv.style.width = W + 'px'; cv.style.height = H + 'px';
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+CW = Math.min(70, W / 6.2); CH = CW * 1.42;
+layout();
+}
+window.addEventListener('resize', resize);
+const S = { IDLE:0, DEAL:1, SHUFFLE:2, FAN:3, REVEAL:4, OVER:5 };
+let state = S.IDLE;
+let deck = [];
+let fan = [];
+let picked = null;
+let revealed = false;
+let total = 0, drawn = 0, freshDeck = true;
+const PILE_N = 5;                        // 洗完后的牌堆叠数
+const PILE_SIZE = DECK_SIZE / PILE_N;    // 每叠张数（20）
+let piles = [];                          // 上方 5 叠牌堆：{ rar, x, y, rot }[]
+function pilePos(i) {
+const gap = Math.min(CW * 1.5, W / (PILE_N + 1.2));
+const x = centerX + (i - (PILE_N - 1) / 2) * gap;
+const y = H * 0.13 + (i % 2) * 3;
+return { x, y, rot: (i - (PILE_N - 1) / 2) * 0.05 };
+}
+// 固定牌库：白34 绿25 蓝20 紫15 橙5 红1 = 100 张（红色整副只有 1 张）
+const DECK_COMPOSE = [34, 25, 20, 15, 5, 1];
+function buildDeckOrdered() {
+const arr = [];
+for (let r = 0; r < DECK_COMPOSE.length; r++)
+for (let k = 0; k < DECK_COMPOSE[r]; k++) arr.push(r);
+for (let i = arr.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[arr[i], arr[j]] = [arr[j], arr[i]];
+}
+return arr;
+}
+function buildPiles() {
+piles = [];
+const pool = buildDeckOrdered();
+let idx = 0;
+for (let p = 0; p < PILE_N; p++) {
+const pos = pilePos(p);
+const arr = [];
+for (let k = 0; k < PILE_SIZE; k++) {
+arr.push({ rar: pool[idx++] != null ? pool[idx - 1] : 0, x: pos.x, y: pos.y, rot: pos.rot });
+}
+piles.push(arr);
+}
+remain = DECK_SIZE;
+}
+function pileRemain() { return piles.reduce((a, p) => a + p.length, 0); }
+const FLOOR_GAP = 10;                    // 停在屏幕底部时牌中心距底边的距离
+function floorY() { return H - FLOOR_GAP - CH / 2; }   // 桌面（落点）的 y 坐标
+let dealTi = 0;                          // 发牌定时器
+let dealCount = 0;                       // 已发出的牌数（发牌阶段专用，不消耗牌堆）
+let dealBag = [];                        // 发牌阶段的品质牌库（固定配比，随机顺序）
+let stat = [0,0,0,0,0,0];
+let floats = [], particles = [], sideCards = [];
+const RAR_P = [0.34, 0.25, 0.20, 0.15, 0.05, 0.01];
+function pickRarity() {
+let r = Math.random(), acc = 0;
+for (let i = 0; i < RAR_P.length; i++) { acc += RAR_P[i]; if (r < acc) return i; }
+return 0;
+}
+function buildDeck(n) {
+const arr = [];
+for (let i = 0; i < n; i++) arr.push({ rar: pickRarity() });
+return arr;
+}
+let centerX = 0, centerY = 0, fanY = 0, fanR = 0, revealY = 0;
+function layout() {
+centerX = W / 2;
+centerY = H * 0.43;
+fanY = H * 0.60;
+fanR = Math.min(CW * 4.2, W * 0.62) / 2;
+revealY = H * 0.46;   // 抽中后牌面在屏幕中央展示
+if (state === S.FAN || state === S.OVER) placeFan();
+if (picked) picked.tx = centerX;
+}
+function placeFan() {
+const n = fan.length;
+if (!n) return;
+const spread = Math.min(1.9, Math.PI * 0.78);
+const step = n > 1 ? spread / (n - 1) : 0;
+for (let i = 0; i < n; i++) {
+const a = -spread / 2 + step * i;
+fan[i].hx = centerX + Math.sin(a) * fanR;
+fan[i].hy = fanY - Math.cos(a) * fanR * 0.42 + fanR * 0.42;
+fan[i].hr = a * 0.85;
+}
+}
+// ---- 发牌：点击位置生成牌，受重力下落到屏幕底部并反弹 ----
+function dealCardAt(px, py) {
+if (dealCount >= DECK_SIZE) return;
+dealCount++;
+const rar = dealBag.length ? dealBag.pop() : pickRarity();   // 发牌阶段不计分、不减牌堆
+const c = {
+rar: rar,
+x: Math.max(CW / 2, Math.min(W - CW / 2, px)),
+y: Math.max(-CH, Math.min(H * 0.6, py)),
+rot: (Math.random() - .5) * 0.6,
+vx: (Math.random() - .5) * 3,
+vy: 1 + Math.random() * 2,
+vr: (Math.random() - .5) * 0.14,
+landed: false, bounces: 0
+};
+deck.push(c);
+subEl.textContent = '牌堆 ' + (DECK_SIZE - dealCount) + '/' + DECK_SIZE;
+// 发完后停止连发
+if (dealCount >= DECK_SIZE) stopAutoDeal();
+}
+// ---- 按住连发 / 滑动发牌：3 秒内发完 100 张 ----
+const DEAL_MS = 3000;
+const DEAL_MOVE_MIN = 14;          // 滑动超过该距离就出一张牌
+let dealTimer = null, dealX = 0, dealY = 0, dealSlot = 0;
+let pointerDown = false, lastMX = 0, lastMY = 0;
+function nextDealSlot() {
+const n = Math.max(1, Math.round(DEAL_MS / Math.max(16, Math.round(DEAL_MS / DECK_SIZE))));
+dealSlot = (dealSlot % n) + 1;                 // 1…n 循环
+return dealSlot / (n + 1);                      // 0→1 均匀分布
+}
+function beginAutoDeal(x, y) {
+if (dealCount >= DECK_SIZE) return;
+pointerDown = true;
+dealX = lastMX = x; dealY = lastMY = y;
+dealCardAt(dealX, dealY);          // 按下立即发第一张
+if (dealCount >= DECK_SIZE) { stopAutoDeal(); return; }
+if (dealTimer) return;
+dealSlot = 0;
+const interval = Math.max(16, Math.round(DEAL_MS / DECK_SIZE));
+dealTimer = setInterval(() => {
+if (state !== S.DEAL || dealCount >= DECK_SIZE || !pointerDown) { stopAutoDeal(); return; }
+const t = nextDealSlot();          // 每张牌都在 3 秒节奏内补位
+dealCardAt(dealX + (Math.random() - .5) * CW * .8, Math.min(dealY, H * .55) - t * H * .1);
+}, interval);
+tipEl.textContent = '按住连发 · 滑动屏幕也能发牌（3 秒内发完 ' + DECK_SIZE + ' 张）';
+}
+function moveDeal(x, y) {
+if (!pointerDown || state !== S.DEAL || dealCount >= DECK_SIZE) return;
+const dx = x - lastMX, dy = y - lastMY;
+if (dx * dx + dy * dy >= DEAL_MOVE_MIN * DEAL_MOVE_MIN) {
+dealX = lastMX = x; dealY = lastMY = y;
+dealCardAt(x, y);                  // 手指划到哪里，牌就从哪里发出
+}
+}
+function stopAutoDeal() {
+if (dealTimer) { clearInterval(dealTimer); dealTimer = null; }
+pointerDown = false;
+}
+function startDeal() {
+stopAutoDeal();
+freshDeck = (remain === DECK_SIZE);
+if (freshDeck) stat = [0,0,0,0,0,0];
+deck = []; fan = []; picked = null; revealed = false;
+dealCount = 0;
+dealBag = buildDeckOrdered();            // 生成一袋固定配比的牌供发牌抽取
+state = S.DEAL;
+closeBtn.style.display = 'none';
+btn.disabled = true; btn.style.display = 'none';
+subEl.textContent = '牌堆 ' + DECK_SIZE + '/' + DECK_SIZE;
+tipEl.textContent = '按住屏幕任意位置连发（共 ' + DECK_SIZE + ' 张）· 3 秒发完，松手暂停';
+renderDex();
+}
+function armShuffleButton() {
+state = S.IDLE;              // 发牌结束，切回待机态，使洗牌按钮可点击
+btn.style.display = 'block';
+btn.disabled = false;
+btn.textContent = '洗 牌';
+tipEl.textContent = '100 张已发完 · 点击「洗牌」开始抽卡';
+}
+function startShuffle() {
+remain = DECK_SIZE;          // 发牌阶段不消耗牌堆，洗牌时用完整 100 张开始抽卡
+freshDeck = true;
+if (freshDeck) stat = [0,0,0,0,0,0];
+total = 0; drawn = 0;
+scoreEl.textContent = total;
+// 洗的是桌面上已发好的那批牌：复用发牌阶段生成的 deck，不重建
+if (!deck || deck.length === 0) deck = buildDeck(remain);
+// 牌不销毁：直接在底部牌堆上洗（飞行抖动），洗完仍堆叠在屏幕下方
+for (const c of deck) {
+c.sx = c.sx == null ? c.x : c.sx;   // 记住堆叠位置，洗完回到牌堆
+// 从当前停落位置被抓起，向屏幕中央乱飞聚拢，模拟把桌面牌洗到一起
+c.landed = false; c.bounces = 0;
+c.rot = (Math.random() - .5) * .5;
+c.vx = (centerX - c.x) * 0.03 + (Math.random() - .5) * 7;
+c.vy = (centerY - c.y) * 0.03 + (Math.random() - .5) * 7;
+c.vr = (Math.random() - .5) * .2;
+}
+fan = []; picked = null; revealed = false; sideCards = []; piles = []; particles.length = 0; floats.length = 0;
+// 下方掉落的牌立即消失，再用全新的 100 张牌做洗牌动画（聚拢抖动 → 分 5 叠）
+deck = buildDeck(remain);
+for (let i = 0; i < deck.length; i++) {
+  const c = deck[i];
+  c.sx = centerX + (Math.random() - .5) * W * .8;
+  c.sy = centerY + (Math.random() - .5) * H * .6;
+  c.x = c.sx; c.y = c.sy;
+  c.rot = (Math.random() - .5) * .5;
+  c.vx = (centerX - c.x) * 0.03 + (Math.random() - .5) * 7;
+  c.vy = (centerY - c.y) * 0.03 + (Math.random() - .5) * 7;
+  c.vr = (Math.random() - .5) * .2;
+  c.landed = false; c.bounces = 0;
+}
+state = S.SHUFFLE; shuffleT = 0;
+closeBtn.style.display = 'none';
+btn.disabled = true;
+btn.textContent = '抽 卡';
+tipEl.textContent = '洗牌中… 牌堆剩余 ' + remain + ' 张（背面向上）';
+}
+// 从底部牌堆直接取牌（不重新洗牌），牌堆数量同步减少
+function startFan() {
+// 从上方 5 叠牌堆各取 1 张，飞到屏幕中央扇形展开
+if (!piles.length || !piles.some(p => p.length)) { buildPiles(); }
+const rars = [];
+for (let p = 0; p < PILE_N; p++) {
+if (!piles[p]) piles[p] = [];
+if (!piles[p].length && deck.length) piles[p] = deck.splice(0, PILE_SIZE);
+if (piles[p].length) rars.push(piles[p].pop().rar);
+}
+remain = piles.reduce((a, p) => a + p.length, 0);
+deck = [];
+fan = rars.map((r, k) => {
+const sp = pilePos(k);
+return { rar: r, x: sp.x, y: sp.y, rot: sp.rot, hx: centerX, hy: centerY, hr: 0, taken: false };
+});
+state = S.FAN; fanT = 0;
+placeFan();
+btn.disabled = true;
+updateScore();
+tipEl.textContent = '从 5 叠牌堆各取 1 张 · 选 1 张 · 牌堆剩 ' + remain;
+}
+function drawCard(card, i) {
+if (state !== S.FAN || card.taken) return;
+card.taken = true;
+// 其余 4 张翻开展示（只展示、不计分）：先标记为 taken，避免继续留在扇形里当背面牌
+const others = fan.filter(c => !c.taken);
+others.forEach(c => { c.taken = true; });
+sideCards = others.map((c, k) => ({
+rar: c.rar != null ? c.rar : 0, x: c.x, y: c.y, rot: c.rot,
+hx: centerX + (k - (others.length - 1) / 2) * CW * 1.05, hy: H * 0.80, hr: (k - (others.length - 1) / 2) * 0.08, flip: 1
+}));
+picked = { rar: card.rar != null ? card.rar : 0, x: card.x, y: card.y, rot: card.rot, tx: centerX, ty: revealY, trot: 0, t: 0, flipT: 0, flashDone: false };
+state = S.REVEAL; revealT = 0; revealed = false;
+closeBtn.style.display = 'none';
+tipEl.textContent = '';
+}
+// 屏幕边缘冒出对应颜色粒子 + 金光闪过（仅抽中橙/红时）
+const edgeColors = ['#f2913a', '#e24141', '#ffd24a', '#fff2b0'];
+let fxEmit = null;   // 持续喷发特效（橙/红）
+function triggerRareFx(color, n) {
+// n：翻牌瞬间一次喷出的数量；随后持续喷发（红色更久、更多）
+for (let i = 0; i < (n || 90); i++) spawnEdgeParticle(color);
+if (fxEmit && fxEmit.timer) fxEmit.timer = Math.max(fxEmit.timer, fxEmit.left * 0.5);
+else fxEmit = { color, left: n >= 300 ? 130 : 70, timer: 0 };
+triggerGoldFx();
+}
+function spawnEdgeParticle(color) {
+const top = Math.random() < 0.35;
+const fromLeft = Math.random() < 0.5;
+const ex = fromLeft ? -10 : W + 10;
+const ey = top ? Math.random() * H * 0.4 : H * 0.5 + Math.random() * H * 0.55;
+const ang = (fromLeft ? 1 : -1) * (0.3 + Math.random() * 0.7);
+const sp = 4 + Math.random() * 8;
+particles.push({
+x: ex, y: ey,
+vx: Math.cos(ang) * sp * (fromLeft ? 1 : -1),
+vy: -Math.abs(Math.sin(ang) * sp) - Math.random() * 2,
+g: 0.10 + Math.random() * 0.08,
+c: Math.random() < 0.6 ? color : edgeColors[(Math.random() * edgeColors.length) | 0],
+t: 0, life: 90 + Math.random() * 70, size: 3 + Math.random() * 4
+});
+}
+function confirmReveal() {
+if (!picked || revealed) return;
+revealed = true;
+const r = RAR[picked.rar];
+total += r.score; drawn++;
+stat[picked.rar]++;
+scoreEl.textContent = total;
+subEl.textContent = '牌堆 ' + (piles.length ? pileRemain() : remain) + '/' + DECK_SIZE;
+floats.push({ x: centerX, y: revealY - CH * 0.8, txt: '+' + r.score, t: 0 });
+for (let i = 0; i < 20; i++) {
+particles.push({
+x: centerX, y: revealY,
+vx: (Math.random() - .5) * 4, vy: (Math.random() - .7) * 4 - 1,
+c: r.color, t: 0, life: 40 + Math.random() * 30, size: 3 + Math.random() * 3
+});
+}
+if (r.score >= 5 && fxEmit && fxEmit.left < 30) fxEmit.left = 30;   // 确认后再补一波
+btn.disabled = false;
+state = S.OVER;
+closeBtn.style.display = 'block';
+renderDex();
+}
+function restartGame() {
+remain = DECK_SIZE; total = 0; drawn = 0; stat = [0,0,0,0,0,0];
+deck = []; fan = []; piles = []; sideCards = []; picked = null; revealed = false; fxEmit = null; closeBtn.style.display = 'none';
+particles.length = 0; floats.length = 0;
+renderDex(); updateScore();
+startDeal();
+}
+function closeReveal() {
+closeBtn.style.display = 'none';
+picked = null; revealed = false; sideCards = [];
+if (remain <= 0) { remain = DECK_SIZE; stat = [0,0,0,0,0,0]; renderDex(); }
+state = S.OVER;
+btn.disabled = false;
+btn.textContent = '抽 卡';
+tipEl.textContent = remain > 0 ? '牌堆剩 ' + remain + ' 张 · 点击「抽卡」再从 5 叠各取 1 张' : '牌堆已空，点击按钮重新洗牌';
+}
+btn.addEventListener('click', () => {
+if (state === S.OVER) {
+if ( pileRemain() >= FAN_SIZE) startFan();      // 直接抽下一组 5 张，不重新洗牌
+else startShuffle();                         // 牌不够 5 张才重新洗
+} else if (state === S.IDLE) {
+if (btn.textContent === '抽 卡' && pileRemain() >= FAN_SIZE) startFan();
+else startShuffle();
+}
+});
+// 洗牌按钮在发牌阶段隐藏，由发完牌后 armShuffleButton() 显示
+closeBtn.addEventListener('click', closeReveal);
+document.getElementById('restart').addEventListener('click', restartGame);
+function hitTest(px, py) {
+if (state !== S.FAN) return null;
+for (let i = fan.length - 1; i >= 0; i--) {
+const c = fan[i];
+if (c.taken) continue;
+const dx = px - c.x, dy = py - c.y;
+const cos = Math.cos(-c.rot), sin = Math.sin(-c.rot);
+const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
+if (Math.abs(rx) <= CW / 2 && Math.abs(ry) <= CH / 2) return { card: c, i };
+}
+return null;
+}
+function pos(e) {
+const r = cv.getBoundingClientRect();
+const t = e.touches ? e.touches[0] : e;
+return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+function onTap(e) {
+if (state === S.REVEAL) { confirmReveal(); return; }
+const p = pos(e);
+if (state === S.DEAL) { beginAutoDeal(p.x, p.y); return; }
+if (state === S.FAN) {
+const hit = hitTest(p.x, p.y);
+if (hit) drawCard(hit.card, hit.i);
+}
+}
+function endAutoDeal(e) { if (state === S.DEAL) stopAutoDeal(); }
+function onMove(e) {
+if (state !== S.DEAL) return;
+const t = e.touches ? e.touches[0] : e;
+if (!e.touches && e.buttons !== 1) return;   // 鼠标未按下
+const r = cv.getBoundingClientRect();
+moveDeal(t.clientX - r.left, t.clientY - r.top);
+}
+cv.addEventListener('click', onTap);
+cv.addEventListener('mousemove', onMove);
+cv.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
+cv.addEventListener('touchstart', e => { e.preventDefault(); onTap(e); }, { passive: false });
+cv.addEventListener('touchend', endAutoDeal);
+cv.addEventListener('touchcancel', endAutoDeal);
+document.addEventListener('mouseup', endAutoDeal);
+// ---- 绘制 ----
+function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
+// 扁平像素卡牌（已去掉切割/3D 立体卡牌代码）：flip 1=纯背面 → 0=纯正面
+function drawCardFace(x, y, rot, w, h, rar, flip) {
+const R = rar != null ? RAR[rar] : null;
+const backAmt = (flip != null) ? Math.max(0, Math.min(1, flip)) : (R ? 0 : 1);
+const front = 1 - backAmt;                       // 正面露出程度
+ctx.save();
+ctx.translate(x, y);
+ctx.rotate(rot);
+const HW = w / 2, HH = h / 2;
+// 卡面底色：背面深色 ↔ 正面品质色
+function mix(a, b) {
+const pa = a.replace('#', ''), pb = b.replace('#', '');
+const out = [];
+for (let i = 0; i < 3; i++) {
+out.push(Math.round(parseInt(pa.substr(i * 2, 2), 16) * (1 - front) + parseInt(pb.substr(i * 2, 2), 16) * front));
+}
+return 'rgb(' + out.join(',') + ')';
+}
+const body = R ? mix('#161622', R.color) : (front > 0 ? '#161622' : '#161622');
+rrPath(-HW, -HH, w, h, 4);
+ctx.fillStyle = '#000'; ctx.fill();
+rrPath(-HW + 2, -HH + 2, w - 4, h - 4, 3);
+ctx.fillStyle = body; ctx.fill();
+if (front > 0.5 && R) {                          // 正面：像素徽记 + 品质文字
+ctx.save();
+ctx.globalAlpha = front;
+const cx = 0;
+px(cx - 4, -HH + 20, 8, 8, R.ink);
+px(cx - 12, -HH + 32, 24, 4, R.ink);
+px(cx - 8, -HH + 40, 16, 4, R.ink);
+ctx.fillStyle = R.ink;
+ctx.font = 'bold ' + Math.max(8, Math.min(13, w * 0.16)) + 'px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText(R.score + '分·' + R.name, cx, HH - 14);
+ctx.restore();
+} else if (front < 0.5) {                        // 背面：像素棋盘纹
+ctx.save();
+ctx.globalAlpha = 1 - front * 2;
+for (let yy = 8; yy < h - 8; yy += 6) {
+for (let xx = 4; xx + 3 < w - 4; xx += 6) {
+px(-HW + xx, -HH + yy, 3, 3, ((xx / 6 + yy / 6) % 2 === 0) ? '#2b2b40' : '#1c1c2a');
+}
+}
+px(-8, -8, 16, 16, 'rgba(255,255,255,.08)');
+ctx.restore();
+}
+// 边框
+rrPath(-HW + 2.5, -HH + 2.5, w - 5, h - 5, 3);
+ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.lineWidth = 1; ctx.stroke();
+ctx.restore();
+}
+// 轻量背面牌（牌堆堆叠用，无纹路细节，保证 100 张堆叠性能）
+function drawBack(x, y, rot, w, h) {
+ctx.save();
+ctx.translate(x, y);
+ctx.rotate(rot);
+const HW = w / 2, HH = h / 2;
+rrPath(-HW, -HH, w, h, 3);
+ctx.fillStyle = '#000'; ctx.fill();
+rrPath(-HW + 2, -HH + 2, w - 4, h - 4, 2);
+ctx.fillStyle = '#161622'; ctx.fill();
+ctx.restore();
+}
+function rrPath(x, y, w, h, r) {
+ctx.beginPath();
+ctx.moveTo(x + r, y);
+ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+ctx.closePath();
+}
+// 稀有金光：卡面斜向光带扫过（旧版的卡面裁剪实现已随切割卡牌代码移除）
+function goldSweep(x, y, rot, w, h, prog) {
+ctx.save();
+ctx.translate(x, y);
+ctx.rotate(rot);
+ctx.beginPath();
+ctx.rect(-w / 2, -h / 2, w, h);
+ctx.clip();
+ctx.globalCompositeOperation = 'lighter';
+const bandW = w * 0.28;
+const gx = -bandW + prog * (w + bandW * 2);
+const grad = ctx.createLinearGradient(gx - bandW, 0, gx + bandW, 0);
+grad.addColorStop(0, 'rgba(255,220,120,0)');
+grad.addColorStop(0.5, 'rgba(255,238,170,' + (0.55 * (1 - Math.abs(prog - .5) * 1.4)) + ')');
+grad.addColorStop(1, 'rgba(255,220,120,0)');
+ctx.fillStyle = grad;
+ctx.fillRect(-w / 2, -h / 2, w, h);
+ctx.strokeStyle = 'rgba(255,245,200,' + (0.6 * (1 - prog)) + ')';
+ctx.lineWidth = 3;
+ctx.strokeRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2);
+ctx.restore();
+}
+let shuffleT = 0, fanT = 0, revealT = 0, goldT = 0;
+const GOLD_MAX = 30;
+let goldFxT = 0;
+const GOLD_FX_MAX = 180;
+function triggerGoldFx() { goldFxT = GOLD_FX_MAX; }
+function frame() {
+ctx.clearRect(0, 0, W, H);
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, W, H);
+// ---- 发牌：重力 + 底部反弹 ----
+// 桌面上的牌（飞行中 + 落地堆叠），发牌阶段和洗牌按钮出现后都持续绘制，不会消失
+function drawDealtCards() {
+const floor = floorY();
+const landed = deck.filter(c => c.landed);
+for (let i = 0; i < landed.length; i++) {
+const c = landed[i];
+c.sx = c.sx == null ? c.x : c.sx;
+const row = Math.floor(i / 12), col = i % 12;
+const tx = centerX + (col - 5.5) * (CW * 0.72);
+const ty = floor - row * (CH * 0.18);
+c.sx += (tx - c.sx) * 0.12;
+drawCardFace(c.sx, ty, c.rot, CW, CH, null, 1);
+}
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+if (!c.landed) drawCardFace(c.x, c.y, c.rot, CW, CH, null, 1);
+}
+}
+if (state === S.DEAL) {
+const G = 0.55;          // 重力加速度
+const REST = 0.45;       // 反弹恢复系数
+const FRICT = 0.80;      // 触地水平摩擦
+const floor = floorY();
+let allLanded = true;
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+if (c.landed) continue;
+c.vy += G;
+c.x += c.vx;
+c.y += c.vy;
+c.rot += c.vr;
+// 屏幕左右边界反弹
+if (c.x < CW / 2) { c.x = CW / 2; c.vx = -c.vx * 0.5; }
+else if (c.x > W - CW / 2) { c.x = W - CW / 2; c.vx = -c.vx * 0.5; }
+// 触底反弹
+if (c.y >= floor && c.vy > 0) {
+c.y = floor;
+c.vy = -c.vy * REST;
+c.vx *= FRICT;
+c.vr *= FRICT;
+c.bounces++;
+if (c.bounces >= 3 && Math.abs(c.vy) < 3) { c.landed = true; c.vy = 0; c.vx = 0; }
+}
+if (!c.landed) allLanded = false;
+}
+	drawDealtCards();
+// 全部落地且已发完 → 亮出洗牌按钮
+if (allLanded && dealCount >= DECK_SIZE && state === S.DEAL && btn.style.display === 'none') {
+armShuffleButton();
+}
+}
+// 洗牌按钮出现后（待机态）：桌面已发的牌继续留在底部，不消失
+if (state === S.IDLE) drawDealtCards();
 
-  // 六档品质：白1 绿2 蓝3 紫4 橙5 红6（概率 34/25/20/15/5/1 %）
-  const RAR = [
-    { name:'白', score:1, color:'#e6e6e6', ink:'#333' },
-    { name:'绿', score:2, color:'#4ac86a', ink:'#0d3316' },
-    { name:'蓝', score:3, color:'#3a8ee6', ink:'#0b2545' },
-    { name:'紫', score:4, color:'#9a55d6', ink:'#2d1247' },
-    { name:'橙', score:5, color:'#f2913a', ink:'#4a2706' },
-    { name:'红', score:6, color:'#e24141', ink:'#450c0c' }
-  ];
+if (state === S.SHUFFLE) {
+shuffleT++;
+const k = Math.max(0, 1 - shuffleT / 46);
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+const jx = Math.sin(shuffleT * 0.21 + i * 0.7), jy = Math.cos(shuffleT * 0.17 + i * 0.9);
+c.vx += (centerX - c.x) * 0.035 + jx * 1.2;
+c.vy += (centerY - c.y) * 0.035 + jy * 1.2;
+c.vx *= 0.86; c.vy *= 0.86;
+c.x += c.vx; c.y += c.vy;
+c.rot += c.vr * k + (Math.random() - .5) * 0.1 * k;
+const off = (i - deck.length / 2) * 0.5;
+drawCardFace(c.x + off, c.y + off * 0.4, c.rot, CW, CH, null, 1);  // 洗牌：背面
+}
+if (shuffleT > 48) {
+	// 洗完：牌按顺序整理为上方 5 叠，每叠 20 张
+	buildPiles();
+	deck = [];   // 动画牌消失，只保留上方 5 叠牌堆
+	state = S.IDLE;
+	armShuffleButton();
+	btn.textContent = '抽 卡';
+	tipEl.textContent = '洗牌完成 · 上方 5 叠牌堆（每叠 ' + PILE_SIZE + ' 张），点击「抽卡」各取 1 张';
+	}
+}
+// ---- 上方 5 叠牌堆：每叠 20 张，背面向上，逐张错位重叠 ----
+if (piles.length && state !== S.DEAL && state !== S.SHUFFLE) {
+const stepY = Math.max(2.2, Math.min(5, H * 0.006));
+for (let p = 0; p < piles.length; p++) {
+const arr = piles[p] || [];
+const n = Math.min(arr.length, PILE_SIZE);
+const pos = pilePos(p);
+for (let k = 0; k < n; k++) {
+drawBack(pos.x + (k % 2) * 0.6, pos.y - k * stepY, pos.rot, CW, CH);
+}
+if (arr.length) {
+ctx.fillStyle = '#1a1a2c';
+ctx.font = 'bold 10px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText(arr.length, pos.x + CW * 0.6, pos.y + CH * 0.55 - n * stepY);
+}
+}
+}
+if (state === S.FAN || state === S.OVER) {
+fanT++;
+for (let i = 0; i < fan.length; i++) {
+const c = fan[i];
+if (!c.taken && state === S.FAN) c.hy += Math.sin(fanT * 0.06 + i) * 0.25;
+c.x += (c.hx - c.x) * 0.25;
+c.y += (c.hy - c.y) * 0.25;
+c.rot += (c.hr - c.rot) * 0.25;
+if (c.taken) continue;   // 被选中的牌由 picked 单独绘制；其余四张由 sideCards 展示
+const bob = state === S.FAN ? Math.sin(fanT * 0.06 + i) * 3 : 0;
+drawCardFace(c.x, c.y - bob, c.rot, CW, CH, null, 1);  // 扇形：全部背面
+}
+}
+// 其余四张：翻到屏幕下方并翻开正面（只展示，不计分）
+for (let i = 0; i < sideCards.length; i++) {
+const sc = sideCards[i];
+sc.x += (sc.hx - sc.x) * 0.22;
+sc.y += (sc.hy - sc.y) * 0.22;
+sc.rot += (sc.hr - sc.rot) * 0.22;
+if (state === S.OVER) sc.flip = Math.max(0, sc.flip - 0.08);  // 揭晓后翻成正面
+drawCardFace(sc.x, sc.y, sc.rot, CW * 0.8, CH * 0.8, sc.rar, sc.flip);
+}
+if ((state === S.REVEAL || state === S.OVER) && picked) {
+revealT++;
+const p = picked;
+if (state === S.REVEAL) {
+p.t = Math.min(1, p.t + 0.055);
+const e = 1 - Math.pow(1 - p.t, 3);
+p.x += (p.tx - p.x) * 0.18;
+p.y += (p.ty - p.y) * 0.18;
+p.rot += (p.trot - p.rot) * 0.18;
+// 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
+if (p.t > 0.45) p.flipT = Math.min(1, p.flipT + 0.07);
+if (p.flipT >= 1 && p.flipT > 0 && p.flipT < 0.001) p.flipT = 1;
+const ax = p.flipT <= 0 ? 1 : (p.flipT >= 1 ? 0 : (p.flipT < 0.5 ? 1 : 0));
+const hi = RAR[p.rar].score >= 5;                      // 橙/红：放大更多
+if (hi) {
+const pulse = 1 + Math.sin(revealT * 0.18) * 0.05;    // 呼吸缩放
+if (p.scale == null) p.scale = 1.35;
+p.scale += (1.35 * pulse - p.scale) * 0.2;
+} else p.scale = 1.25;
+if (hi && p.flipT >= 1) {                                   // 橙/红：绕中轴只转一整圈
+if (p.spinAcc == null) p.spinAcc = 0;
+if (p.spinAcc < Math.PI * 2) {
+const d = Math.min(Math.PI * 2 - p.spinAcc, 0.06);
+p.rot += d; p.spinAcc += d;
+}
+}
+drawCardFace(p.x, p.y, p.rot, CW * (p.scale || 1.25), CH * (p.scale || 1.25), p.rar, ax);
+if (p.flipT > 0 && !p.flashDone) {
+p.flashDone = true;
+if (RAR[p.rar].score >= 5) {
+goldT = GOLD_MAX;
+// 橙色多、红色最多：红 300 / 橙 150
+triggerRareFx(RAR[p.rar].color, RAR[p.rar].score >= 6 ? 300 : 150);
+}
+for (let k = 0; k < 14; k++) {
+particles.push({
+x: p.x + (Math.random() - .5) * CW, y: p.y + (Math.random() - .5) * CH,
+vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4 - 1,
+t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
+});
+}
+}
+if (p.t >= 1 && p.flipT >= 1) confirmReveal();
+} else {
+// 展示：正面（品质色）在屏幕中央，轻微摆动
+const isHi = RAR[p.rar].score >= 5;
+if (isHi) {                                   // 橙/红：补齐未满的一整圈后停住
+if (p.spinAcc == null) p.spinAcc = 0;
+if (p.spinAcc < Math.PI * 2) {
+const d = Math.min(Math.PI * 2 - p.spinAcc, 0.06);
+p.rot += d; p.spinAcc += d;
+}
+p.scale = 1.35;
+} else p.scale = 1.25;
+const rr = isHi ? (p.scale || 1.35) : 1.25;
+drawCardFace(p.x, p.y, isHi ? p.rot : Math.sin(revealT * 0.05) * 0.03, CW * rr, CH * rr, p.rar, 0);
+if (goldT > 0) goldSweep(p.x, p.y, isHi ? p.rot : 0, CW * rr, CH * rr, 1 - goldT / GOLD_MAX);
+const R = RAR[p.rar];
+const by = p.y + CH * rr / 2 + 22;
+ctx.fillStyle = 'rgba(255,255,255,.85)';
+ctx.fillRect(centerX - 56, by - 11, 112, 20);
+ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+ctx.strokeRect(centerX - 56.5, by - 11.5, 113, 21);
+ctx.fillStyle = R.color;
+ctx.font = 'bold 13px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText('+' + R.score + ' 分 · ' + R.name, centerX, by);
+}
+}
+if (goldT > 0) goldT--;
+if (goldFxT > 0) {
+const gp = 1 - goldFxT / GOLD_FX_MAX;
+const env = Math.sin(Math.min(1, gp * 1.05) * Math.PI);
+ctx.save();
+ctx.globalCompositeOperation = 'lighter';
+ctx.globalAlpha = 0.16 * env;
+const gg = ctx.createRadialGradient(centerX, revealY, 10, centerX, revealY, Math.max(W, H) * 0.6);
+gg.addColorStop(0, '#ffe9a8');
+gg.addColorStop(1, 'rgba(255,220,120,0)');
+ctx.fillStyle = gg;
+ctx.fillRect(0, 0, W, H);
+for (let i = 0; i < 26; i++) {
+const a = i / 26 * Math.PI * 2 + gp * 4;
+const rr = Math.max(W, H) * (0.3 + 0.35 * ((i % 5) / 4));
+ctx.fillStyle = 'rgba(255,230,150,.5)';
+ctx.fillRect(centerX + Math.cos(a) * rr - 3, revealY + Math.sin(a) * rr - 3, 6, 6);
+}
+ctx.restore();
+goldFxT--;
+}
+// 飘分
+for (let i = floats.length - 1; i >= 0; i--) {
+const f = floats[i]; f.t++;
+ctx.globalAlpha = Math.max(0, 1 - f.t / 40);
+ctx.font = 'bold 20px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+ctx.strokeText(f.txt, f.x, f.y - f.t * 1.1);
+ctx.fillStyle = '#ffe066';
+ctx.fillText(f.txt, f.x, f.y - f.t * 1.1);
+ctx.globalAlpha = 1;
+if (f.t > 40) floats.splice(i, 1);
+}
+if (fxEmit) {
+if (fxEmit.left > 0 && --fxEmit.timer <= 0) {
+spawnEdgeParticle(fxEmit.color);
+if (Math.random() < 0.4) spawnEdgeParticle(fxEmit.color);
+fxEmit.timer = 2 + ((Math.random() * 3) | 0); fxEmit.left--;
+if (goldFxT < 30) goldFxT = 30;              // 期间金光偶尔再闪
+}
+if (fxEmit.left <= 0) fxEmit = null;
+}
+if (fxEmit) {
+if (fxEmit.left > 0 && --fxEmit.timer <= 0) {
+spawnEdgeParticle(fxEmit.color);
+if (Math.random() < 0.4) spawnEdgeParticle(fxEmit.color);
+fxEmit.timer = 2 + ((Math.random() * 3) | 0); fxEmit.left--;
+if (goldFxT < 30) goldFxT = 30;              // 期间金光偶尔再闪
+}
+if (fxEmit.left <= 0) fxEmit = null;
+}
+// 粒子
+for (let i = particles.length - 1; i >= 0; i--) {
+const pt = particles[i]; pt.t++;
+pt.x += pt.vx; pt.y += pt.vy; pt.vx *= 0.99; pt.vy *= 0.99; pt.vy += pt.g != null ? pt.g : 0.12;
+ctx.globalAlpha = Math.max(0, 1 - pt.t / pt.life);
+const sz = pt.size || 4; px(pt.x, pt.y, sz, sz, pt.c);
+ctx.globalAlpha = 1;
+if (pt.t > pt.life) particles.splice(i, 1);
+}
+requestAnimationFrame(frame);
+}
+function updateScore() { scoreEl.textContent = total; subEl.textContent = '牌堆 ' + (piles.length ? pileRemain() : remain) + '/' + DECK_SIZE; }
+function renderDex() {
+dexEl.innerHTML = RAR.map((r, i) => '<div><span style="display:inline-block;width:8px;height:8px;background:' + r.color + ';border:1px solid #000"></span> ' + r.name + ' ' + stat[i] + '</div>').join('');
+}
+resize(); renderDex(); updateScore();
+btn.style.display = 'none';
+startDeal();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
+function restartGame() {
+remain = DECK_SIZE; total = 0; drawn = 0; stat = [0,0,0,0,0,0];
+deck = []; fan = []; picked = null; revealed = false; closeBtn.style.display = 'none';
+particles.length = 0; floats.length = 0;
+renderDex(); updateScore();
+startDeal();
+}
+function closeReveal() {
+closeBtn.style.display = 'none';
+picked = null; revealed = false;
+if (remain <= 0) { remain = DECK_SIZE; stat = [0,0,0,0,0,0]; renderDex(); }
+state = S.OVER;
+btn.disabled = false;
+tipEl.textContent = remain > 0 ? '本轮已抽完，重新洗牌继续（剩 ' + remain + ' 张）' : '牌堆已空，重新开始新的一局';
+}
+btn.addEventListener('click', () => {
+if (state === S.OVER || state === S.IDLE) { startShuffle(); }
+});
+// 洗牌按钮在发牌阶段隐藏，由发完牌后 armShuffleButton() 显示
+closeBtn.addEventListener('click', closeReveal);
+document.getElementById('restart').addEventListener('click', restartGame);
+function hitTest(px, py) {
+if (state !== S.FAN) return null;
+for (let i = fan.length - 1; i >= 0; i--) {
+const c = fan[i];
+if (c.taken) continue;
+const dx = px - c.x, dy = py - c.y;
+const cos = Math.cos(-c.rot), sin = Math.sin(-c.rot);
+const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
+if (Math.abs(rx) <= CW / 2 && Math.abs(ry) <= CH / 2) return { card: c, i };
+}
+return null;
+}
+function pos(e) {
+const r = cv.getBoundingClientRect();
+const t = e.touches ? e.touches[0] : e;
+return { x: t.clientX - r.left, y: t.clientY - r.top };
+}
+function onTap(e) {
+if (state === S.REVEAL) { confirmReveal(); return; }
+const p = pos(e);
+if (state === S.DEAL) { beginAutoDeal(p.x, p.y); return; }
+if (state === S.FAN) {
+const hit = hitTest(p.x, p.y);
+if (hit) drawCard(hit.card, hit.i);
+}
+}
+function endAutoDeal(e) { if (state === S.DEAL) stopAutoDeal(); }
+function onMove(e) {
+if (state !== S.DEAL) return;
+const t = e.touches ? e.touches[0] : e;
+if (!e.touches && e.buttons !== 1) return;   // 鼠标未按下
+const r = cv.getBoundingClientRect();
+moveDeal(t.clientX - r.left, t.clientY - r.top);
+}
+cv.addEventListener('click', onTap);
+cv.addEventListener('mousemove', onMove);
+cv.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
+cv.addEventListener('touchstart', e => { e.preventDefault(); onTap(e); }, { passive: false });
+cv.addEventListener('touchend', endAutoDeal);
+cv.addEventListener('touchcancel', endAutoDeal);
+document.addEventListener('mouseup', endAutoDeal);
+// ---- 绘制 ----
+function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
+function shade(hex, amt) {
+const h = hex.replace('#','');
+let r = parseInt(h.substr(0,2),16), g = parseInt(h.substr(2,2),16), b = parseInt(h.substr(4,2),16);
+if (amt >= 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
+else { r *= (1 + amt); g *= (1 + amt); b *= (1 + amt); }
+return 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')';
+}
+// 长方体卡牌：backAmt 1=纯背面 → 0=纯正面（翻转动画插值）
+// flip=1 / 传 null 品质 → 纯黑背面；flip=0 → 品质色正面
+function drawCardFace(x, y, rot, w, h, rar, flip, scale, tilt) {
+const R = rar != null ? RAR[rar] : null;
+const backAmt = (flip != null) ? Math.max(0, Math.min(1, flip)) : (R ? 0 : 1);
+const D  = Math.max(2, w * 0.06);                 // 薄长方体厚度
+const ay = (tilt || 0);
+// backAmt=1 → ax=π：黑色背面正对屏幕；backAmt=0 → ax=0：品质色正面正对屏幕
+// 翻转中途 ax≈π/2 时牌侧对屏幕，露出薄厚度侧面
+const ax = backAmt * Math.PI;
+const cy = Math.cos(ay), sy = Math.sin(ay);
+const cx = Math.cos(ax), sx = Math.sin(ax);
+const hw = w / 2, hh = h / 2, hd = D / 2;
+const P = [
+[-hw, -hh, -hd], [hw, -hh, -hd], [hw, hh, -hd], [-hw, hh, -hd],
+[-hw, -hh,  hd], [hw, -hh,  hd], [hw, hh,  hd], [-hw, hh,  hd]
+].map(p => {
+const y1 = p[1] * cx - p[2] * sx;
+const z1 = p[1] * sx + p[2] * cx;
+const x2 = p[0] * cy + z1 * sy;
+const z2 = -p[0] * sy + z1 * cy;
+return { x: x + x2, y: y + y1, z: z2 };
+});
+ctx.fillStyle = 'rgba(0,0,0,' + (0.08 + 0.08 * Math.max(0, sx)) + ')';
+ctx.beginPath();
+ctx.ellipse(x + D * 0.9, y + hh * 0.98 + D * 0.6, hw * 1.02, hh * 0.16, 0, 0, Math.PI * 2);
+ctx.fill();
+function quad(a, b, cc, d, fill, stroke) {
+const pa = P[a], pb = P[b], pc = P[cc], pd = P[d];
+ctx.beginPath();
+ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y);
+ctx.lineTo(pc.x, pc.y); ctx.lineTo(pd.x, pd.y);
+ctx.closePath();
+if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
+function facePattern(pts, draw) {
+ctx.save();
+ctx.beginPath();
+ctx.moveTo(pts[0].x, pts[0].y);
+for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+ctx.closePath();
+ctx.clip();
+draw();
+ctx.restore();
+}
+function drawBack(pts) {
+facePattern(pts, function () {
+const b = pts[0], bb = pts[2];
+const bw = Math.abs(bb.x - b.x) || w, bh = Math.abs(bb.y - b.y) || h;
+const ox = Math.min(b.x, bb.x), oy = Math.min(b.y, bb.y);
+px(ox, oy, bw, bh, '#000');            // 黑色背面
+px(ox + 2, oy + 2, bw - 4, bh - 4, '#161622');
+px(ox + 2, oy + 2, bw - 4, 6, 'rgba(255,255,255,.10)');
+const step = 6;                         // 像素棋盘纹
+for (let yy = 8; yy < bh - 6; yy += step) {
+for (let xx = 4; xx + 3 < bw - 4; xx += step) {
+px(ox + xx, oy + yy, 3, 3, ((xx / step + yy / step) % 2 === 0) ? '#2b2b40' : '#1c1c2a');
+}
+}
+px(ox + bw / 2 - 8, oy + bh / 2 - 8, 16, 16, 'rgba(255,255,255,.08)');
+});
+}
+function drawFront(pts) {
+facePattern(pts, function () {
+const b = pts[0], bb = pts[2];
+const bw = Math.abs(bb.x - b.x) || w, bh = Math.abs(bb.y - b.y) || h;
+const ox = Math.min(b.x, bb.x), oy = Math.min(b.y, bb.y);
+px(ox, oy, bw, bh, '#000');
+px(ox + 2, oy + 2, bw - 4, bh - 4, R ? R.color : '#161622');
+px(ox + 2, oy + 2, bw - 4, 6, R ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.10)');
+px(ox + 2, oy + 2, 5, bh - 4, R ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)');
+px(ox + 2, oy + bh - 7, bw - 4, 5, 'rgba(0,0,0,.25)');
+px(ox + bw - 6, oy + 2, 4, bh - 4, 'rgba(0,0,0,.15)');
+if (R && bw > 26) {
+ctx.strokeStyle = 'rgba(255,255,255,.35)';
+ctx.lineWidth = 1;
+ctx.strokeRect(ox + 5.5, oy + 5.5, bw - 11, bh - 11);
+const cx = ox + bw / 2;
+px(cx - 4, oy + 20, 8, 8, R.ink);
+px(cx - 12, oy + 32, 24, 4, R.ink);
+px(cx - 8, oy + 40, 16, 4, R.ink);
+px(ox + 4, oy + bh - 28, bw - 8, 10, 'rgba(0,0,0,.16)');
+const fs = Math.max(8, Math.min(13, w * 0.16));
+ctx.fillStyle = R.ink;
+ctx.font = 'bold ' + fs + 'px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText(R.score + '分·' + R.name, cx, oy + bh - 22);
+}
+});
+}
+// 侧面用品质色（有品质时）——牌的材质随正面前倾
+const side = R ? R.color : null;
+if (side) {
+quad(4, 5, 1, 0, shade(side,  0.30));
+quad(7, 6, 2, 3, shade(side, -0.52));
+quad(5, 6, 2, 1, shade(side,  0.02));
+quad(4, 7, 3, 0, shade(side, -0.22));
+} else {
+quad(4, 5, 1, 0, '#33334a');
+quad(7, 6, 2, 3, '#0a0a12');
+quad(5, 6, 2, 1, '#20202e');
+quad(4, 7, 3, 0, '#151520');
+}
+// cx=cos(ax)：>0 正面朝屏幕；<0 背面朝屏幕；接近 0 时侧对、露出厚度
+const frontFacing = cx > -0.12;   // 正面（品质色）
+const backFacing  = cx <  0.12;   // 背面（黑色）
+// 画家算法：谁在后面先画谁
+if (cx >= 0) {
+if (backFacing) drawBack([P[0], P[1], P[2], P[3]]);
+if (frontFacing) {
+quad(4, 5, 6, 7, R ? R.color : null);
+drawFront([P[4], P[5], P[6], P[7]]);
+}
+} else {
+if (frontFacing) {
+quad(4, 5, 6, 7, R ? R.color : null);
+drawFront([P[4], P[5], P[6], P[7]]);
+}
+if (backFacing) drawBack([P[0], P[1], P[2], P[3]]);
+}
+quad(4, 5, 6, 7, null, 'rgba(0,0,0,.85)');
+if (backFacing && frontFacing) {
+ctx.beginPath();
+ctx.moveTo(P[0].x, P[0].y); ctx.lineTo(P[1].x, P[1].y);
+ctx.lineTo(P[5].x, P[5].y); ctx.lineTo(P[4].x, P[4].y);
+ctx.closePath();
+ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fill();
+}
+// 金光（仅正面朝外、红/橙稀有）
+if (goldT > 0 && R && R.score >= 5 && frontFacing && cx > 0.5) {
+const prog = 1 - goldT / GOLD_MAX;
+ctx.save();
+ctx.beginPath();
+ctx.moveTo(P[4].x, P[4].y); ctx.lineTo(P[5].x, P[5].y);
+ctx.lineTo(P[6].x, P[6].y); ctx.lineTo(P[7].x, P[7].y);
+ctx.closePath();
+ctx.clip();
+ctx.globalCompositeOperation = 'lighter';
+const bandW = w * 0.28;
+const gx = -bandW + prog * (w + bandW * 2);
+const grad = ctx.createLinearGradient(P[4].x - bandW, 0, P[4].x + bandW, 0);
+grad.addColorStop(0, 'rgba(255,220,120,0)');
+grad.addColorStop(0.5, 'rgba(255,238,170,' + (0.55 * (1 - Math.abs(prog - .5) * 1.4)) + ')');
+grad.addColorStop(1, 'rgba(255,220,120,0)');
+ctx.fillStyle = grad;
+ctx.fillRect(Math.min(P[4].x, P[5].x), Math.min(P[4].y, P[7].y), Math.abs(P[5].x - P[4].x) || w, Math.abs(P[6].y - P[5].y) || h);
+ctx.strokeStyle = 'rgba(255,245,200,' + (0.6 * (1 - prog)) + ')';
+ctx.lineWidth = 3;
+ctx.strokeRect(1, 1, w - 2, h - 2);
+ctx.restore();
+}
+}
+let shuffleT = 0, fanT = 0, revealT = 0, goldT = 0;
+const GOLD_MAX = 30;
+let goldFxT = 0;
+const GOLD_FX_MAX = 180;
+function triggerGoldFx() { goldFxT = GOLD_FX_MAX; }
+function frame() {
+ctx.clearRect(0, 0, W, H);
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, W, H);
+// ---- 发牌：重力 + 底部反弹 ----
+// 桌面上的牌（飞行中 + 落地堆叠），发牌阶段和洗牌按钮出现后都持续绘制，不会消失
+function drawDealtCards() {
+const floor = floorY();
+const landed = deck.filter(c => c.landed);
+for (let i = 0; i < landed.length; i++) {
+const c = landed[i];
+c.sx = c.sx == null ? c.x : c.sx;
+const row = Math.floor(i / 12), col = i % 12;
+const tx = centerX + (col - 5.5) * (CW * 0.72);
+const ty = floor - row * (CH * 0.18);
+c.sx += (tx - c.sx) * 0.12;
+drawCardFace(c.sx, ty, c.rot, CW, CH, null, 1, 1, 0);
+}
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+if (!c.landed) drawCardFace(c.x, c.y, c.rot, CW, CH, null, 1, 1, 0);
+}
+}
+if (state === S.DEAL) {
+const G = 0.55;          // 重力加速度
+const REST = 0.45;       // 反弹恢复系数
+const FRICT = 0.80;      // 触地水平摩擦
+const floor = floorY();
+let allLanded = true;
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+if (c.landed) continue;
+c.vy += G;
+c.x += c.vx;
+c.y += c.vy;
+c.rot += c.vr;
+// 屏幕左右边界反弹
+if (c.x < CW / 2) { c.x = CW / 2; c.vx = -c.vx * 0.5; }
+else if (c.x > W - CW / 2) { c.x = W - CW / 2; c.vx = -c.vx * 0.5; }
+// 触底反弹
+if (c.y >= floor && c.vy > 0) {
+c.y = floor;
+c.vy = -c.vy * REST;
+c.vx *= FRICT;
+c.vr *= FRICT;
+c.bounces++;
+if (c.bounces >= 3 && Math.abs(c.vy) < 3) { c.landed = true; c.vy = 0; c.vx = 0; }
+}
+if (!c.landed) allLanded = false;
+}
+	drawDealtCards();
+// 全部落地且已发完 → 亮出洗牌按钮
+if (allLanded && dealCount >= DECK_SIZE && state === S.DEAL && btn.style.display === 'none') {
+armShuffleButton();
+}
+}
+// 洗牌按钮出现后（待机态）：桌面已发的牌继续留在底部，不消失
+if (state === S.IDLE && btn.textContent === '洗 牌') drawDealtCards();
 
-  const DECK_SIZE = 100;  // 一副牌的总张数
-  let   remain = DECK_SIZE; // 牌堆剩余张数（越抽越少）
-  const FAN_SIZE  = 5;    // 扇形展开张数
-
-  let W = 0, H = 0, CW = 0, CH = 0, dpr = 1;
-  function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = wrap.clientWidth; H = wrap.clientHeight;
-    cv.width = W * dpr; cv.height = H * dpr;
-    cv.style.width = W + 'px'; cv.style.height = H + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    CW = Math.min(70, W / 6.2); CH = CW * 1.42;
-    layout();
-  }
-  window.addEventListener('resize', resize);
-
-  // ---- 状态 ----
-  const S = { IDLE:0, SHUFFLE:1, FAN:2, REVEAL:3, OVER:4 };
-  let state = S.IDLE;
-  let deck = [];            // 当前牌堆 {rar, x, y, rot, vx, vy, vr}
-  let fan = [];             // 扇形 6 张 {rar, x, y, rot, taken}
-  let picked = null;        // 抽中的牌
-  let revealed = false;     // 是否已翻开
-  let total = 0, drawn = 0, roundUsed = 0, freshDeck = true;
-  let stat = [0,0,0,0,0,0];
-  let floats = [], particles = [];
-
-  // 指定概率：红1% 橙5% 紫15% 蓝20% 绿25% 白34%（白最低1分，红最高6分）
-  const RAR_P = [0.34, 0.25, 0.20, 0.15, 0.05, 0.01];
-  function pickRarity() {
-    let r = Math.random(), acc = 0;
-    for (let i = 0; i < RAR_P.length; i++) { acc += RAR_P[i]; if (r < acc) return i; }
-    return 0;
-  }
-  function buildDeck(n) {
-    const w = [0,0,0,0,0,0];
-    const arr = [];
-    for (let i = 0; i < n; i++) {
-      const r = pickRarity();
-      w[r]++; arr.push({ rar: r });
-    }
-    return { arr, w };
-  }
-
-  // ---- 布局 ----
-  let centerX = 0, centerY = 0, fanY = 0, fanR = 0, revealY = 0;
-  function layout() {
-    centerX = W / 2;
-    centerY = H * 0.43;
-    fanY = H * 0.60;
-    fanR = Math.min(CW * 4.2, W * 0.62) / 2;
-    revealY = H * 0.30;
-    if (state === S.FAN || state === S.OVER) placeFan();
-    if (picked) picked.x = centerX;
-  }
-  function placeFan() {
-    const n = fan.length;
-    if (!n) return;
-    const spread = Math.min(1.9, Math.PI * 0.78);
-    const step = n > 1 ? spread / (n - 1) : 0;
-    for (let i = 0; i < n; i++) {
-      const a = -spread / 2 + step * i;
-      fan[i].hx = centerX + Math.sin(a) * fanR;
-      fan[i].hy = fanY - Math.cos(a) * fanR * 0.42 + fanR * 0.42;
-      fan[i].hr = a * 0.85;
-    }
-  }
-
-  function startShuffle() {
-    freshDeck = (remain === DECK_SIZE);
-    const d = buildDeck(remain);
-    deck = d.arr;
-    if (freshDeck) stat = [0,0,0,0,0,0];
-    for (const c of deck) {
-      c.x = centerX + (Math.random() - .5) * 30;
-      c.y = centerY + (Math.random() - .5) * 30;
-      c.rot = (Math.random() - .5) * .5;
-      c.vx = (Math.random() - .5) * 7;
-      c.vy = (Math.random() - .5) * 7;
-      c.vr = (Math.random() - .5) * .2;
-    }
-    fan = []; picked = null; revealed = false;
-    state = S.SHUFFLE; shuffleT = 0;
-    closeBtn.style.display = 'none';
-    btn.disabled = true;
-    tipEl.textContent = '洗牌中… 牌堆剩余 ' + remain + ' 张';
-  }
-
-  function startFan() {
-    const idx = [];
-    const pool = deck.map((c, i) => i);
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    const take = Math.min(FAN_SIZE, pool.length);
-    for (let i = 0; i < take; i++) idx.push(pool[i]);
-    // 这 5 张离开牌堆 —— 牌越抽越少
-    const rars = idx.map(i => deck[i].rar);
-    remain -= take;
-    deck = [];
-    fan = rars.map(r => ({ rar: r, x: centerX, y: centerY, rot: 0, hx: centerX, hy: centerY, hr: 0, taken: false }));
-    state = S.FAN; fanT = 0;
-    placeFan();
-    btn.disabled = true;
-    tipEl.textContent = '从 ' + fan.length + ' 张中选 1 张 · 牌堆剩 ' + remain;
-  }
-
-  function drawCard(card, i) {
-    if (state !== S.FAN || card.taken) return;
-    card.taken = true;
-    picked = { rar: card.rar, x: card.x, y: card.y, rot: card.rot, tx: centerX, ty: revealY, trot: 0, t: 0, flashDone: false };
-    state = S.REVEAL; revealT = 0; revealed = false;
-    closeBtn.style.display = 'none';
-    tipEl.textContent = '';
-  }
-  function confirmReveal() {
-    if (!picked || revealed) return;
-    revealed = true;
-    const r = RAR[picked.rar];
-    total += r.score; drawn++;
-    stat[picked.rar]++;
-    scoreEl.textContent = total;
-    subEl.textContent = '牌堆 ' + remain + '/' + DECK_SIZE;
-    floats.push({ x: centerX, y: revealY - CH / 2 - 8, txt: '+' + r.score, t: 0 });
-    for (let i = 0; i < 26; i++) {
-      particles.push({
-        x: centerX, y: revealY,
-        vx: (Math.random() - .5) * 6, vy: (Math.random() - .7) * 6,
-        c: r.color, t: 0, life: 30 + Math.random() * 24
-      });
-    }
-    btn.disabled = false;
-    state = S.OVER;
-    closeBtn.style.display = 'block';
-    renderDex();
-  }
-  function restartGame() {
-    remain = DECK_SIZE; total = 0; drawn = 0; stat = [0,0,0,0,0,0];
-    deck = []; fan = []; picked = null; revealed = false; closeBtn.style.display = 'none';
-    particles.length = 0; floats.length = 0;
-    renderDex(); updateScore();
-    // 记分清零后，立即把 100 张牌重新发到屏幕中央洗牌
-    startShuffle();
-  }
-
-  function closeReveal() {
-    closeBtn.style.display = 'none';
-    picked = null; revealed = false;
-    if (remain <= 0) { remain = DECK_SIZE; stat = [0,0,0,0,0,0]; renderDex(); }
-    state = S.OVER;
-    btn.disabled = false;
-    tipEl.textContent = remain > 0 ? '本轮已抽完，重新洗牌继续（剩 ' + remain + ' 张）' : '牌堆已空，重新开始新的一局';
-  }
-
-  btn.addEventListener('click', () => {
-    if (state === S.OVER || state === S.IDLE) { startShuffle(); }
-  });
-  closeBtn.addEventListener('click', closeReveal);
-  document.getElementById('restart').addEventListener('click', restartGame);
-
-  function hitTest(px, py) {
-    if (state !== S.FAN) return null;
-    for (let i = fan.length - 1; i >= 0; i--) {
-      const c = fan[i];
-      if (c.taken) continue;
-      const dx = px - c.x, dy = py - c.y;
-      const cos = Math.cos(-c.rot), sin = Math.sin(-c.rot);
-      const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
-      if (Math.abs(rx) <= CW / 2 && Math.abs(ry) <= CH / 2) return { card: c, i };
-    }
-    return null;
-  }
-  function pos(e) {
-    const r = cv.getBoundingClientRect();
-    const t = e.touches ? e.touches[0] : e;
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
-  }
-  function onTap(e) {
-    if (state === S.REVEAL) { confirmReveal(); return; }
-    if (state === S.FAN) {
-      const p = pos(e); const hit = hitTest(p.x, p.y);
-      if (hit) drawCard(hit.card, hit.i);
-    }
-  }
-  cv.addEventListener('click', onTap);
-  cv.addEventListener('touchstart', e => { e.preventDefault(); onTap(e); }, { passive: false });
-
-  // ---- 绘制 ----
-  function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
-  function drawCardFace(x, y, rot, w, h, rar, flip, scale) {
-    ctx.save();
-    ctx.translate(x, y); ctx.rotate(rot);
-    if (scale) ctx.scale(scale, scale);
-    const s = flip * w;                 // 卡片水平压缩模拟翻面
-    ctx.translate(-w / 2, -h / 2);
-    const R = RAR[rar];
-    // 阴影
-    px(4, 5, w, h, 'rgba(0,0,0,.45)');
-    if (s > 0.06 && R) {                // 正面：品质色
-      px(0, 0, s, h, '#000');
-      px(2, 2, s - 4, h - 4, R.color);
-      px(4, 4, s - 8, 10, 'rgba(255,255,255,.35)');
-      px(4, h - 14, s - 8, 10, 'rgba(0,0,0,.25)');
-      const cx = s / 2;
-      px(cx - 4, 22, 8, 8, R.ink);
-      px(cx - 12, 34, 24, 4, R.ink);
-      px(cx - 8, 42, 16, 4, R.ink);
-      px(4, h - 30, s - 8, 12, 'rgba(0,0,0,.18)');
-      const fs = Math.max(9, Math.min(13, w * 0.17));
-      ctx.fillStyle = R.ink;
-      ctx.font = 'bold ' + fs + 'px "Courier New",monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(R.score + '分·' + R.name, cx, h - 24);
-    } else {                            // 背面：黑底
-      px(0, 0, Math.max(s, 3), h, '#000');
-      px(2, 2, Math.max(s - 4, 2), h - 4, '#161622');
-      const step = 6;
-      for (let yy = 8; yy < h - 6; yy += step) {
-        for (let xx = 4; xx + 3 < Math.max(s, 3) - 4; xx += step) {
-          px(xx, yy, 3, 3, ((xx / step + yy / step) % 2 === 0) ? '#2b2b40' : '#1c1c2a');
-        }
-      }
-      px(4, 4, Math.max(s - 8, 2), h - 8, 'rgba(255,255,255,.05)');
-    }
-    // 金光扫光（红/橙稀有登场）：一道斜向光束掠过正面
-    if (goldT > 0 && rar && (RAR[rar].score >= 5)) {
-      const prog = 1 - goldT / GOLD_MAX;         // 0→1
-      ctx.save();
-      ctx.translate(x, y); ctx.rotate(rot);
-      if (scale) ctx.scale(scale, scale);
-      ctx.translate(-w / 2, -h / 2);
-      const bandW = w * 0.28;
-      const gx = -bandW + prog * (w + bandW * 2);
-      ctx.globalCompositeOperation = 'lighter';
-      const grad = ctx.createLinearGradient(gx - bandW, 0, gx + bandW, 0);
-      grad.addColorStop(0, 'rgba(255,220,120,0)');
-      grad.addColorStop(0.5, 'rgba(255,238,170,' + (0.55 * (1 - Math.abs(prog - .5) * 1.4)) + ')');
-      grad.addColorStop(1, 'rgba(255,220,120,0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(Math.max(0, gx - bandW), 0, bandW * 2, h);
-      // 边缘高光闪一下
-      ctx.strokeStyle = 'rgba(255,245,200,' + (0.6 * (1 - prog)) + ')';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(1, 1, w - 2, h - 2);
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  let shuffleT = 0, fanT = 0, revealT = 0, goldT = 0;
-  const GOLD_MAX = 30;
-  // 全屏金光（红/橙稀有登场）：持续 3 秒，金色粒子从屏幕边缘溢出
-  let goldFxT = 0;
-  const GOLD_FX_MAX = 180; // 约 3 秒（60fps）
-  function triggerGoldFx() {
-    goldFxT = GOLD_FX_MAX;
-  }
-  function frame() {
-    ctx.clearRect(0, 0, W, H);
-
-    if (state === S.SHUFFLE) {
-      shuffleT++;
-      const k = Math.max(0, 1 - shuffleT / 46);
-      for (let i = 0; i < deck.length; i++) {
-        const c = deck[i];
-        const jx = Math.sin(shuffleT * 0.21 + i * 0.7), jy = Math.cos(shuffleT * 0.17 + i * 0.9);
-        c.vx += (centerX - c.x) * 0.035 + jx * 1.2;
-        c.vy += (centerY - c.y) * 0.035 + jy * 1.2;
-        c.vx *= 0.86; c.vy *= 0.86;
-        c.x += c.vx; c.y += c.vy;
-        c.rot += c.vr * k + (Math.random() - .5) * 0.1 * k;
-        const off = (i - deck.length / 2) * 0.5;
-        drawCardFace(c.x + off, c.y + off * 0.4, c.rot, CW, CH, null, 0, 1);
-      }
-      if (shuffleT > 48) startFan();
-    }
-
-    if (state === S.FAN || state === S.OVER) {
-      fanT++;
-      for (let i = 0; i < fan.length; i++) {
-        const c = fan[i];
-        const e = 1 - Math.pow(0.82, Math.min(fanT, 30));
-        if (!c.taken && state === S.FAN) {
-          c.hy += Math.sin(fanT * 0.06 + i) * 0.25; // 轻微呼吸
-        }
-        c.x += (c.hx - c.x) * 0.25;
-        c.y += (c.hy - c.y) * 0.25;
-        c.rot += (c.hr - c.rot) * 0.25;
-        if (c.taken) { drawCardFace(c.x, c.y, c.rot, CW, CH, null, 0, 1); continue; }
-        drawCardFace(c.x, c.y - (state === S.FAN ? Math.sin(fanT * 0.06 + i) * 3 : 0), c.rot, CW, CH, c.rar, 0, 1);
-      }
-    }
-
-    if ((state === S.REVEAL || state === S.OVER) && picked) {
-      revealT++;
-      const p = picked;
-      if (state === S.REVEAL) {
-        p.t = Math.min(1, p.t + 0.06);
-        const e = 1 - Math.pow(1 - p.t, 3);
-        p.x += (p.tx - p.x) * 0.18;
-        p.y += (p.ty - p.y) * 0.18;
-        p.rot += (p.trot - p.rot) * 0.18;
-        // 0→0.5 背面压缩；0.5 瞬间翻到正面；0.5→1 正面展开，清晰看到品质颜色
-        const half = p.t >= 0.5;
-        const flip = half ? (p.t - 0.5) * 2 : (0.5 - p.t) * 2; // 0→1→0→1→0
-        drawCardFace(p.x, p.y, p.rot, CW * 1.25, CH * 1.25, half ? p.rar : null, flip, 1);
-        if (half && !p.flashDone) {
-          p.flashDone = true;
-          if (RAR[p.rar].score >= 5) { goldT = GOLD_MAX; triggerGoldFx(); } // 红/橙金光扫过 + 全屏金光
-          for (let k = 0; k < 14; k++) {
-            particles.push({
-              x: p.x + (Math.random() - .5) * CW, y: p.y + (Math.random() - .5) * CH,
-              vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4 - 1,
-              t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
-            });
-          }
-        }
-        if (p.t >= 1) confirmReveal();
-      } else {
-        // 展示：完整正面（品质颜色）+ 分数标注
-        drawCardFace(p.x, p.y, Math.sin(revealT * 0.05) * 0.03, CW * 1.25, CH * 1.25, p.rar, 0, 1);
-        const R = RAR[p.rar];
-        const by = p.y + CH * 1.25 / 2 + 16;
-        ctx.fillStyle = 'rgba(0,0,0,.55)';
-        ctx.fillRect(centerX - 52, by - 11, 104, 20);
-        ctx.fillStyle = R.color;
-        ctx.font = 'bold 13px "Courier New",monospace';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('+' + R.score + ' 分 · ' + R.name, centerX, by);
-      }
-    }
-
-    if (goldT > 0) goldT--;
-
-    // ---- 全屏金光（红/橙登场，持续 3 秒）----
-    if (goldFxT > 0) {
-      const gp = 1 - goldFxT / GOLD_FX_MAX;      // 0→1 进度
-      const env = Math.sin(Math.min(1, gp * 1.05) * Math.PI); // 淡入淡出包络
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      // 全屏金色泛光
-      ctx.globalAlpha = 0.16 * env;
-      const gg = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(W, H) * 0.75);
-      gg.addColorStop(0, 'rgba(255,240,180,1)');
-      gg.addColorStop(1, 'rgba(255,190,80,0)');
-      ctx.fillStyle = gg;
-      ctx.fillRect(0, 0, W, H);
-      // 斜向扫过的一道宽光束
-      ctx.globalAlpha = 0.22 * env;
-      const bandW = W * 0.22;
-      const gx = -bandW + gp * (W + bandW * 2);
-      const lg = ctx.createLinearGradient(gx - bandW, 0, gx + bandW, 0);
-      lg.addColorStop(0, 'rgba(255,230,150,0)');
-      lg.addColorStop(0.5, 'rgba(255,248,210,1)');
-      lg.addColorStop(1, 'rgba(255,230,150,0)');
-      ctx.fillStyle = lg;
-      ctx.fillRect(gx - bandW, 0, bandW * 2, H);
-      ctx.restore();
-      // 从屏幕四边缘持续溢出金色粒子
-      const spawn = 3 + Math.floor(Math.random() * 3);
-      for (let s = 0; s < spawn; s++) {
-        const edge = Math.floor(Math.random() * 4);
-        let ex, ey, evx, evy;
-        const sp = 2 + Math.random() * 4;
-        if (edge === 0) { ex = Math.random() * W; ey = -4; evx = (Math.random() - .5) * 2; evy = sp; }
-        else if (edge === 1) { ex = W + 4; ey = Math.random() * H; evx = -sp; evy = (Math.random() - .5) * 2; }
-        else if (edge === 2) { ex = Math.random() * W; ey = H + 4; evx = (Math.random() - .5) * 2; evy = -sp; }
-        else { ex = -4; ey = Math.random() * H; evx = sp; evy = (Math.random() - .5) * 2; }
-        particles.push({
-          x: ex, y: ey, vx: evx, vy: evy,
-          c: Math.random() < 0.5 ? '#ffe9a8' : '#ffcf6a',
-          t: 0, life: 40 + Math.random() * 40, gold: true
-        });
-      }
-      goldFxT--;
-    }
-
-    // 粒子
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const q = particles[i]; q.t++;
-      q.x += q.vx; q.y += q.vy; q.vy += q.gold ? 0.05 : 0.25;
-      const sz = q.gold ? (Math.random() < 0.5 ? 4 : 3) : 4;
-      px(q.x, q.y, sz, sz, q.c);
-      if (q.t > q.life) particles.splice(i, 1);
-    }
-    // 飘分
-    for (let i = floats.length - 1; i >= 0; i--) {
-      const f = floats[i]; f.t++;
-      f.y -= 1.1;
-      ctx.globalAlpha = Math.max(0, 1 - f.t / 46);
-      ctx.fillStyle = '#ffe066';
-      ctx.font = 'bold 18px "Courier New",monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(f.txt, f.x, f.y);
-      ctx.globalAlpha = 1;
-      if (f.t > 46) floats.splice(i, 1);
-    }
-
-    if (state === S.IDLE) {
-      ctx.fillStyle = '#3a3a52';
-      ctx.font = '12px "Courier New",monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('点「抽卡」开始 · 牌堆 ' + DECK_SIZE + ' 张，越抽越少', centerX, centerY);
-    }
-
-    // 收起键定位在卡牌右侧
-    if (closeBtn.style.display === 'block' && picked) {
-      closeBtn.style.left = Math.min(W - 74, picked.x + CW * 0.7) + 'px';
-      closeBtn.style.top = (picked.y - 12) + 'px';
-    }
-    requestAnimationFrame(frame);
-  }
-
-  function renderDex() {
-    dexEl.innerHTML = RAR.map((r, i) =>
-      '<div><span style="display:inline-block;width:8px;height:8px;background:' + r.color +
-      ';border:1px solid #000;margin-right:5px"></span>' + r.name + '(' + r.score + '分) ×' + stat[i] + '</div>'
-    ).join('');
-  }
-
-  resize(); renderDex(); frame();
+if (state === S.SHUFFLE) {
+shuffleT++;
+const k = Math.max(0, 1 - shuffleT / 46);
+for (let i = 0; i < deck.length; i++) {
+const c = deck[i];
+const jx = Math.sin(shuffleT * 0.21 + i * 0.7), jy = Math.cos(shuffleT * 0.17 + i * 0.9);
+c.vx += (centerX - c.x) * 0.035 + jx * 1.2;
+c.vy += (centerY - c.y) * 0.035 + jy * 1.2;
+c.vx *= 0.86; c.vy *= 0.86;
+c.x += c.vx; c.y += c.vy;
+c.rot += c.vr * k + (Math.random() - .5) * 0.1 * k;
+const off = (i - deck.length / 2) * 0.5;
+drawCardFace(c.x + off, c.y + off * 0.4, c.rot, CW, CH, null, 1, 1, 0);  // 洗牌：背面
+}
+if (shuffleT > 48) startFan();
+}
+if (state === S.FAN || state === S.OVER) {
+fanT++;
+for (let i = 0; i < fan.length; i++) {
+const c = fan[i];
+if (!c.taken && state === S.FAN) c.hy += Math.sin(fanT * 0.06 + i) * 0.25;
+c.x += (c.hx - c.x) * 0.25;
+c.y += (c.hy - c.y) * 0.25;
+c.rot += (c.hr - c.rot) * 0.25;
+if (c.taken) { drawCardFace(c.x, c.y, c.rot, CW, CH, null, 1, 1, 0); continue; }
+const bob = state === S.FAN ? Math.sin(fanT * 0.06 + i) * 3 : 0;
+drawCardFace(c.x, c.y - bob, c.rot, CW, CH, null, 1, 1, 0);  // 扇形：全部背面
+}
+}
+if ((state === S.REVEAL || state === S.OVER) && picked) {
+revealT++;
+const p = picked;
+if (state === S.REVEAL) {
+p.t = Math.min(1, p.t + 0.055);
+const e = 1 - Math.pow(1 - p.t, 3);
+p.x += (p.tx - p.x) * 0.18;
+p.y += (p.ty - p.y) * 0.18;
+p.rot += (p.trot - p.rot) * 0.18;
+// 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
+if (p.t > 0.45) p.flipT = Math.min(1, p.flipT + 0.07);
+const ax = p.flipT <= 0 ? 1 : (p.flipT >= 1 ? 0 : Math.pow(1 - p.flipT, 2));
+drawCardFace(p.x, p.y, p.rot, CW * 1.25, CH * 1.25, p.rar, ax, 1, 0.12);
+if (p.flipT > 0 && !p.flashDone) {
+p.flashDone = true;
+if (RAR[p.rar].score >= 5) { goldT = GOLD_MAX; triggerGoldFx(); }
+for (let k = 0; k < 14; k++) {
+particles.push({
+x: p.x + (Math.random() - .5) * CW, y: p.y + (Math.random() - .5) * CH,
+vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4 - 1,
+t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
+});
+}
+}
+if (p.t >= 1 && p.flipT >= 1) confirmReveal();
+} else {
+// 展示：正面（品质色）在屏幕中央，轻微摆动
+drawCardFace(p.x, p.y, Math.sin(revealT * 0.05) * 0.03, CW * 1.25, CH * 1.25, p.rar, 0, 1, 0.12);
+const R = RAR[p.rar];
+const by = p.y + CH * 1.25 / 2 + 22;
+ctx.fillStyle = 'rgba(255,255,255,.85)';
+ctx.fillRect(centerX - 56, by - 11, 112, 20);
+ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+ctx.strokeRect(centerX - 56.5, by - 11.5, 113, 21);
+ctx.fillStyle = R.color;
+ctx.font = 'bold 13px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillText('+' + R.score + ' 分 · ' + R.name, centerX, by);
+}
+}
+if (goldT > 0) goldT--;
+if (goldFxT > 0) {
+const gp = 1 - goldFxT / GOLD_FX_MAX;
+const env = Math.sin(Math.min(1, gp * 1.05) * Math.PI);
+ctx.save();
+ctx.globalCompositeOperation = 'lighter';
+ctx.globalAlpha = 0.16 * env;
+const gg = ctx.createRadialGradient(centerX, revealY, 10, centerX, revealY, Math.max(W, H) * 0.6);
+gg.addColorStop(0, '#ffe9a8');
+gg.addColorStop(1, 'rgba(255,220,120,0)');
+ctx.fillStyle = gg;
+ctx.fillRect(0, 0, W, H);
+for (let i = 0; i < 26; i++) {
+const a = i / 26 * Math.PI * 2 + gp * 4;
+const rr = Math.max(W, H) * (0.3 + 0.35 * ((i % 5) / 4));
+ctx.fillStyle = 'rgba(255,230,150,.5)';
+ctx.fillRect(centerX + Math.cos(a) * rr - 3, revealY + Math.sin(a) * rr - 3, 6, 6);
+}
+ctx.restore();
+goldFxT--;
+}
+// 飘分
+for (let i = floats.length - 1; i >= 0; i--) {
+const f = floats[i]; f.t++;
+ctx.globalAlpha = Math.max(0, 1 - f.t / 40);
+ctx.font = 'bold 20px "Courier New",monospace';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+ctx.strokeText(f.txt, f.x, f.y - f.t * 1.1);
+ctx.fillStyle = '#ffe066';
+ctx.fillText(f.txt, f.x, f.y - f.t * 1.1);
+ctx.globalAlpha = 1;
+if (f.t > 40) floats.splice(i, 1);
+}
+// 粒子
+for (let i = particles.length - 1; i >= 0; i--) {
+const pt = particles[i]; pt.t++;
+pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.12;
+ctx.globalAlpha = Math.max(0, 1 - pt.t / pt.life);
+px(pt.x, pt.y, 4, 4, pt.c);
+ctx.globalAlpha = 1;
+if (pt.t > pt.life) particles.splice(i, 1);
+}
+requestAnimationFrame(frame);
+}
+function updateScore() { scoreEl.textContent = total; subEl.textContent = '牌堆 ' + remain + '/' + DECK_SIZE; }
+function renderDex() {
+dexEl.innerHTML = RAR.map((r, i) => '<div><span style="display:inline-block;width:8px;height:8px;background:' + r.color + ';border:1px solid #000"></span> ' + r.name + ' ' + stat[i] + '</div>').join('');
+}
+resize(); renderDex(); updateScore();
+btn.style.display = 'none';
+startDeal();
+requestAnimationFrame(frame);
 })();
 </script>
 </body>
