@@ -462,6 +462,12 @@ document.addEventListener('mouseup', endAutoDeal);
 // ---- 绘制 ----
 function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
 // 扁平像素卡牌（已去掉切割/3D 立体卡牌代码）：flip 1=纯背面 → 0=纯正面
+// 翻面相位：flipT 每跨 1 翻一次面 → 背面(1)→正面(0)→背面(1)→正面(0)…
+function flipAx(ft) {
+const seg = Math.floor(ft), fr = ft - seg;
+const first = (seg % 2 === 0) ? 1 : 0;   // 偶数段从背面起，奇数段从正面起
+return fr < 0.5 ? first : 1 - first;
+}
 function drawCardFace(x, y, rot, w, h, rar, flip) {
 const R = rar != null ? RAR[rar] : null;
 const backAmt = (flip != null) ? Math.max(0, Math.min(1, flip)) : (R ? 0 : 1);
@@ -692,17 +698,17 @@ const e = 1 - Math.pow(1 - p.t, 3);
 p.x += (p.tx - p.x) * 0.18;
 p.y += (p.ty - p.y) * 0.18;
 p.rot += (p.trot - p.rot) * 0.18;
-// 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
-if (p.t > 0.45) p.flipT = Math.min(1, p.flipT + 0.07);
-if (p.flipT >= 1 && p.flipT > 0 && p.flipT < 0.001) p.flipT = 1;
-const ax = p.flipT <= 0 ? 1 : (p.flipT >= 1 ? 0 : (p.flipT < 0.5 ? 1 : 0));
 const hi = RAR[p.rar].score >= 5;                      // 橙/红：放大更多
+const flipMax = hi ? 3 : 1;                            // 橙/红：背→正→背→正 三次翻转；其余只翻一次
+// 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
+if (p.t > 0.45) p.flipT = Math.min(flipMax, p.flipT + 0.07);
+const ax = flipAx(p.flipT);
 if (hi) {
 const pulse = 1 + Math.sin(revealT * 0.18) * 0.05;    // 呼吸缩放
 if (p.scale == null) p.scale = 1.35;
 p.scale += (1.35 * pulse - p.scale) * 0.2;
 } else p.scale = 1.25;
-if (hi && p.flipT >= 1) {                                   // 橙/红：绕中轴只转一整圈
+if (hi) {                                              // 橙/红：绕中轴只转一整圈
 if (p.spinAcc == null) p.spinAcc = 0;
 if (p.spinAcc < Math.PI * 2) {
 const d = Math.min(Math.PI * 2 - p.spinAcc, 0.06);
@@ -710,7 +716,7 @@ p.rot += d; p.spinAcc += d;
 }
 }
 drawCardFace(p.x, p.y, p.rot, CW * (p.scale || 1.25), CH * (p.scale || 1.25), p.rar, ax);
-if (p.flipT > 0 && !p.flashDone) {
+if (ax === 0 && !p.flashDone) {                        // 首次翻到正面时触发特效
 p.flashDone = true;
 if (RAR[p.rar].score >= 5) {
 goldT = GOLD_MAX;
@@ -725,7 +731,7 @@ t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
 });
 }
 }
-if (p.t >= 1 && p.flipT >= 1) confirmReveal();
+if (p.t >= 1 && p.flipT >= flipMax) confirmReveal();
 } else {
 // 展示：正面（品质色）在屏幕中央，轻微摆动
 const isHi = RAR[p.rar].score >= 5;
@@ -816,420 +822,6 @@ if (pt.t > pt.life) particles.splice(i, 1);
 requestAnimationFrame(frame);
 }
 function updateScore() { scoreEl.textContent = total; subEl.textContent = '牌堆 ' + (piles.length ? pileRemain() : remain) + '/' + DECK_SIZE; }
-function renderDex() {
-dexEl.innerHTML = RAR.map((r, i) => '<div><span style="display:inline-block;width:8px;height:8px;background:' + r.color + ';border:1px solid #000"></span> ' + r.name + ' ' + stat[i] + '</div>').join('');
-}
-resize(); renderDex(); updateScore();
-btn.style.display = 'none';
-startDeal();
-requestAnimationFrame(frame);
-})();
-</script>
-</body>
-</html>
-function restartGame() {
-remain = DECK_SIZE; total = 0; drawn = 0; stat = [0,0,0,0,0,0];
-deck = []; fan = []; picked = null; revealed = false; closeBtn.style.display = 'none';
-particles.length = 0; floats.length = 0;
-renderDex(); updateScore();
-startDeal();
-}
-function closeReveal() {
-closeBtn.style.display = 'none';
-picked = null; revealed = false;
-if (remain <= 0) { remain = DECK_SIZE; stat = [0,0,0,0,0,0]; renderDex(); }
-state = S.OVER;
-btn.disabled = false;
-tipEl.textContent = remain > 0 ? '本轮已抽完，重新洗牌继续（剩 ' + remain + ' 张）' : '牌堆已空，重新开始新的一局';
-}
-btn.addEventListener('click', () => {
-if (state === S.OVER || state === S.IDLE) { startShuffle(); }
-});
-// 洗牌按钮在发牌阶段隐藏，由发完牌后 armShuffleButton() 显示
-closeBtn.addEventListener('click', closeReveal);
-document.getElementById('restart').addEventListener('click', restartGame);
-function hitTest(px, py) {
-if (state !== S.FAN) return null;
-for (let i = fan.length - 1; i >= 0; i--) {
-const c = fan[i];
-if (c.taken) continue;
-const dx = px - c.x, dy = py - c.y;
-const cos = Math.cos(-c.rot), sin = Math.sin(-c.rot);
-const rx = dx * cos - dy * sin, ry = dx * sin + dy * cos;
-if (Math.abs(rx) <= CW / 2 && Math.abs(ry) <= CH / 2) return { card: c, i };
-}
-return null;
-}
-function pos(e) {
-const r = cv.getBoundingClientRect();
-const t = e.touches ? e.touches[0] : e;
-return { x: t.clientX - r.left, y: t.clientY - r.top };
-}
-function onTap(e) {
-if (state === S.REVEAL) { confirmReveal(); return; }
-const p = pos(e);
-if (state === S.DEAL) { beginAutoDeal(p.x, p.y); return; }
-if (state === S.FAN) {
-const hit = hitTest(p.x, p.y);
-if (hit) drawCard(hit.card, hit.i);
-}
-}
-function endAutoDeal(e) { if (state === S.DEAL) stopAutoDeal(); }
-function onMove(e) {
-if (state !== S.DEAL) return;
-const t = e.touches ? e.touches[0] : e;
-if (!e.touches && e.buttons !== 1) return;   // 鼠标未按下
-const r = cv.getBoundingClientRect();
-moveDeal(t.clientX - r.left, t.clientY - r.top);
-}
-cv.addEventListener('click', onTap);
-cv.addEventListener('mousemove', onMove);
-cv.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
-cv.addEventListener('touchstart', e => { e.preventDefault(); onTap(e); }, { passive: false });
-cv.addEventListener('touchend', endAutoDeal);
-cv.addEventListener('touchcancel', endAutoDeal);
-document.addEventListener('mouseup', endAutoDeal);
-// ---- 绘制 ----
-function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
-function shade(hex, amt) {
-const h = hex.replace('#','');
-let r = parseInt(h.substr(0,2),16), g = parseInt(h.substr(2,2),16), b = parseInt(h.substr(4,2),16);
-if (amt >= 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
-else { r *= (1 + amt); g *= (1 + amt); b *= (1 + amt); }
-return 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')';
-}
-// 长方体卡牌：backAmt 1=纯背面 → 0=纯正面（翻转动画插值）
-// flip=1 / 传 null 品质 → 纯黑背面；flip=0 → 品质色正面
-function drawCardFace(x, y, rot, w, h, rar, flip, scale, tilt) {
-const R = rar != null ? RAR[rar] : null;
-const backAmt = (flip != null) ? Math.max(0, Math.min(1, flip)) : (R ? 0 : 1);
-const D  = Math.max(2, w * 0.06);                 // 薄长方体厚度
-const ay = (tilt || 0);
-// backAmt=1 → ax=π：黑色背面正对屏幕；backAmt=0 → ax=0：品质色正面正对屏幕
-// 翻转中途 ax≈π/2 时牌侧对屏幕，露出薄厚度侧面
-const ax = backAmt * Math.PI;
-const cy = Math.cos(ay), sy = Math.sin(ay);
-const cx = Math.cos(ax), sx = Math.sin(ax);
-const hw = w / 2, hh = h / 2, hd = D / 2;
-const P = [
-[-hw, -hh, -hd], [hw, -hh, -hd], [hw, hh, -hd], [-hw, hh, -hd],
-[-hw, -hh,  hd], [hw, -hh,  hd], [hw, hh,  hd], [-hw, hh,  hd]
-].map(p => {
-const y1 = p[1] * cx - p[2] * sx;
-const z1 = p[1] * sx + p[2] * cx;
-const x2 = p[0] * cy + z1 * sy;
-const z2 = -p[0] * sy + z1 * cy;
-return { x: x + x2, y: y + y1, z: z2 };
-});
-ctx.fillStyle = 'rgba(0,0,0,' + (0.08 + 0.08 * Math.max(0, sx)) + ')';
-ctx.beginPath();
-ctx.ellipse(x + D * 0.9, y + hh * 0.98 + D * 0.6, hw * 1.02, hh * 0.16, 0, 0, Math.PI * 2);
-ctx.fill();
-function quad(a, b, cc, d, fill, stroke) {
-const pa = P[a], pb = P[b], pc = P[cc], pd = P[d];
-ctx.beginPath();
-ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y);
-ctx.lineTo(pc.x, pc.y); ctx.lineTo(pd.x, pd.y);
-ctx.closePath();
-if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
-}
-function facePattern(pts, draw) {
-ctx.save();
-ctx.beginPath();
-ctx.moveTo(pts[0].x, pts[0].y);
-for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-ctx.closePath();
-ctx.clip();
-draw();
-ctx.restore();
-}
-function drawBack(pts) {
-facePattern(pts, function () {
-const b = pts[0], bb = pts[2];
-const bw = Math.abs(bb.x - b.x) || w, bh = Math.abs(bb.y - b.y) || h;
-const ox = Math.min(b.x, bb.x), oy = Math.min(b.y, bb.y);
-px(ox, oy, bw, bh, '#000');            // 黑色背面
-px(ox + 2, oy + 2, bw - 4, bh - 4, '#161622');
-px(ox + 2, oy + 2, bw - 4, 6, 'rgba(255,255,255,.10)');
-const step = 6;                         // 像素棋盘纹
-for (let yy = 8; yy < bh - 6; yy += step) {
-for (let xx = 4; xx + 3 < bw - 4; xx += step) {
-px(ox + xx, oy + yy, 3, 3, ((xx / step + yy / step) % 2 === 0) ? '#2b2b40' : '#1c1c2a');
-}
-}
-px(ox + bw / 2 - 8, oy + bh / 2 - 8, 16, 16, 'rgba(255,255,255,.08)');
-});
-}
-function drawFront(pts) {
-facePattern(pts, function () {
-const b = pts[0], bb = pts[2];
-const bw = Math.abs(bb.x - b.x) || w, bh = Math.abs(bb.y - b.y) || h;
-const ox = Math.min(b.x, bb.x), oy = Math.min(b.y, bb.y);
-px(ox, oy, bw, bh, '#000');
-px(ox + 2, oy + 2, bw - 4, bh - 4, R ? R.color : '#161622');
-px(ox + 2, oy + 2, bw - 4, 6, R ? 'rgba(255,255,255,.45)' : 'rgba(255,255,255,.10)');
-px(ox + 2, oy + 2, 5, bh - 4, R ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.06)');
-px(ox + 2, oy + bh - 7, bw - 4, 5, 'rgba(0,0,0,.25)');
-px(ox + bw - 6, oy + 2, 4, bh - 4, 'rgba(0,0,0,.15)');
-if (R && bw > 26) {
-ctx.strokeStyle = 'rgba(255,255,255,.35)';
-ctx.lineWidth = 1;
-ctx.strokeRect(ox + 5.5, oy + 5.5, bw - 11, bh - 11);
-const cx = ox + bw / 2;
-px(cx - 4, oy + 20, 8, 8, R.ink);
-px(cx - 12, oy + 32, 24, 4, R.ink);
-px(cx - 8, oy + 40, 16, 4, R.ink);
-px(ox + 4, oy + bh - 28, bw - 8, 10, 'rgba(0,0,0,.16)');
-const fs = Math.max(8, Math.min(13, w * 0.16));
-ctx.fillStyle = R.ink;
-ctx.font = 'bold ' + fs + 'px "Courier New",monospace';
-ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-ctx.fillText(R.score + '分·' + R.name, cx, oy + bh - 22);
-}
-});
-}
-// 侧面用品质色（有品质时）——牌的材质随正面前倾
-const side = R ? R.color : null;
-if (side) {
-quad(4, 5, 1, 0, shade(side,  0.30));
-quad(7, 6, 2, 3, shade(side, -0.52));
-quad(5, 6, 2, 1, shade(side,  0.02));
-quad(4, 7, 3, 0, shade(side, -0.22));
-} else {
-quad(4, 5, 1, 0, '#33334a');
-quad(7, 6, 2, 3, '#0a0a12');
-quad(5, 6, 2, 1, '#20202e');
-quad(4, 7, 3, 0, '#151520');
-}
-// cx=cos(ax)：>0 正面朝屏幕；<0 背面朝屏幕；接近 0 时侧对、露出厚度
-const frontFacing = cx > -0.12;   // 正面（品质色）
-const backFacing  = cx <  0.12;   // 背面（黑色）
-// 画家算法：谁在后面先画谁
-if (cx >= 0) {
-if (backFacing) drawBack([P[0], P[1], P[2], P[3]]);
-if (frontFacing) {
-quad(4, 5, 6, 7, R ? R.color : null);
-drawFront([P[4], P[5], P[6], P[7]]);
-}
-} else {
-if (frontFacing) {
-quad(4, 5, 6, 7, R ? R.color : null);
-drawFront([P[4], P[5], P[6], P[7]]);
-}
-if (backFacing) drawBack([P[0], P[1], P[2], P[3]]);
-}
-quad(4, 5, 6, 7, null, 'rgba(0,0,0,.85)');
-if (backFacing && frontFacing) {
-ctx.beginPath();
-ctx.moveTo(P[0].x, P[0].y); ctx.lineTo(P[1].x, P[1].y);
-ctx.lineTo(P[5].x, P[5].y); ctx.lineTo(P[4].x, P[4].y);
-ctx.closePath();
-ctx.fillStyle = 'rgba(0,0,0,.7)'; ctx.fill();
-}
-// 金光（仅正面朝外、红/橙稀有）
-if (goldT > 0 && R && R.score >= 5 && frontFacing && cx > 0.5) {
-const prog = 1 - goldT / GOLD_MAX;
-ctx.save();
-ctx.beginPath();
-ctx.moveTo(P[4].x, P[4].y); ctx.lineTo(P[5].x, P[5].y);
-ctx.lineTo(P[6].x, P[6].y); ctx.lineTo(P[7].x, P[7].y);
-ctx.closePath();
-ctx.clip();
-ctx.globalCompositeOperation = 'lighter';
-const bandW = w * 0.28;
-const gx = -bandW + prog * (w + bandW * 2);
-const grad = ctx.createLinearGradient(P[4].x - bandW, 0, P[4].x + bandW, 0);
-grad.addColorStop(0, 'rgba(255,220,120,0)');
-grad.addColorStop(0.5, 'rgba(255,238,170,' + (0.55 * (1 - Math.abs(prog - .5) * 1.4)) + ')');
-grad.addColorStop(1, 'rgba(255,220,120,0)');
-ctx.fillStyle = grad;
-ctx.fillRect(Math.min(P[4].x, P[5].x), Math.min(P[4].y, P[7].y), Math.abs(P[5].x - P[4].x) || w, Math.abs(P[6].y - P[5].y) || h);
-ctx.strokeStyle = 'rgba(255,245,200,' + (0.6 * (1 - prog)) + ')';
-ctx.lineWidth = 3;
-ctx.strokeRect(1, 1, w - 2, h - 2);
-ctx.restore();
-}
-}
-let shuffleT = 0, fanT = 0, revealT = 0, goldT = 0;
-const GOLD_MAX = 30;
-let goldFxT = 0;
-const GOLD_FX_MAX = 180;
-function triggerGoldFx() { goldFxT = GOLD_FX_MAX; }
-function frame() {
-ctx.clearRect(0, 0, W, H);
-ctx.fillStyle = '#ffffff';
-ctx.fillRect(0, 0, W, H);
-// ---- 发牌：重力 + 底部反弹 ----
-// 桌面上的牌（飞行中 + 落地堆叠），发牌阶段和洗牌按钮出现后都持续绘制，不会消失
-function drawDealtCards() {
-const floor = floorY();
-const landed = deck.filter(c => c.landed);
-for (let i = 0; i < landed.length; i++) {
-const c = landed[i];
-c.sx = c.sx == null ? c.x : c.sx;
-const row = Math.floor(i / 12), col = i % 12;
-const tx = centerX + (col - 5.5) * (CW * 0.72);
-const ty = floor - row * (CH * 0.18);
-c.sx += (tx - c.sx) * 0.12;
-drawCardFace(c.sx, ty, c.rot, CW, CH, null, 1, 1, 0);
-}
-for (let i = 0; i < deck.length; i++) {
-const c = deck[i];
-if (!c.landed) drawCardFace(c.x, c.y, c.rot, CW, CH, null, 1, 1, 0);
-}
-}
-if (state === S.DEAL) {
-const G = 0.55;          // 重力加速度
-const REST = 0.45;       // 反弹恢复系数
-const FRICT = 0.80;      // 触地水平摩擦
-const floor = floorY();
-let allLanded = true;
-for (let i = 0; i < deck.length; i++) {
-const c = deck[i];
-if (c.landed) continue;
-c.vy += G;
-c.x += c.vx;
-c.y += c.vy;
-c.rot += c.vr;
-// 屏幕左右边界反弹
-if (c.x < CW / 2) { c.x = CW / 2; c.vx = -c.vx * 0.5; }
-else if (c.x > W - CW / 2) { c.x = W - CW / 2; c.vx = -c.vx * 0.5; }
-// 触底反弹
-if (c.y >= floor && c.vy > 0) {
-c.y = floor;
-c.vy = -c.vy * REST;
-c.vx *= FRICT;
-c.vr *= FRICT;
-c.bounces++;
-if (c.bounces >= 3 && Math.abs(c.vy) < 3) { c.landed = true; c.vy = 0; c.vx = 0; }
-}
-if (!c.landed) allLanded = false;
-}
-	drawDealtCards();
-// 全部落地且已发完 → 亮出洗牌按钮
-if (allLanded && dealCount >= DECK_SIZE && state === S.DEAL && btn.style.display === 'none') {
-armShuffleButton();
-}
-}
-// 洗牌按钮出现后（待机态）：桌面已发的牌继续留在底部，不消失
-if (state === S.IDLE && btn.textContent === '洗 牌') drawDealtCards();
-
-if (state === S.SHUFFLE) {
-shuffleT++;
-const k = Math.max(0, 1 - shuffleT / 46);
-for (let i = 0; i < deck.length; i++) {
-const c = deck[i];
-const jx = Math.sin(shuffleT * 0.21 + i * 0.7), jy = Math.cos(shuffleT * 0.17 + i * 0.9);
-c.vx += (centerX - c.x) * 0.035 + jx * 1.2;
-c.vy += (centerY - c.y) * 0.035 + jy * 1.2;
-c.vx *= 0.86; c.vy *= 0.86;
-c.x += c.vx; c.y += c.vy;
-c.rot += c.vr * k + (Math.random() - .5) * 0.1 * k;
-const off = (i - deck.length / 2) * 0.5;
-drawCardFace(c.x + off, c.y + off * 0.4, c.rot, CW, CH, null, 1, 1, 0);  // 洗牌：背面
-}
-if (shuffleT > 48) startFan();
-}
-if (state === S.FAN || state === S.OVER) {
-fanT++;
-for (let i = 0; i < fan.length; i++) {
-const c = fan[i];
-if (!c.taken && state === S.FAN) c.hy += Math.sin(fanT * 0.06 + i) * 0.25;
-c.x += (c.hx - c.x) * 0.25;
-c.y += (c.hy - c.y) * 0.25;
-c.rot += (c.hr - c.rot) * 0.25;
-if (c.taken) { drawCardFace(c.x, c.y, c.rot, CW, CH, null, 1, 1, 0); continue; }
-const bob = state === S.FAN ? Math.sin(fanT * 0.06 + i) * 3 : 0;
-drawCardFace(c.x, c.y - bob, c.rot, CW, CH, null, 1, 1, 0);  // 扇形：全部背面
-}
-}
-if ((state === S.REVEAL || state === S.OVER) && picked) {
-revealT++;
-const p = picked;
-if (state === S.REVEAL) {
-p.t = Math.min(1, p.t + 0.055);
-const e = 1 - Math.pow(1 - p.t, 3);
-p.x += (p.tx - p.x) * 0.18;
-p.y += (p.ty - p.y) * 0.18;
-p.rot += (p.trot - p.rot) * 0.18;
-// 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
-if (p.t > 0.45) p.flipT = Math.min(1, p.flipT + 0.07);
-const ax = p.flipT <= 0 ? 1 : (p.flipT >= 1 ? 0 : Math.pow(1 - p.flipT, 2));
-drawCardFace(p.x, p.y, p.rot, CW * 1.25, CH * 1.25, p.rar, ax, 1, 0.12);
-if (p.flipT > 0 && !p.flashDone) {
-p.flashDone = true;
-if (RAR[p.rar].score >= 5) { goldT = GOLD_MAX; triggerGoldFx(); }
-for (let k = 0; k < 14; k++) {
-particles.push({
-x: p.x + (Math.random() - .5) * CW, y: p.y + (Math.random() - .5) * CH,
-vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4 - 1,
-t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
-});
-}
-}
-if (p.t >= 1 && p.flipT >= 1) confirmReveal();
-} else {
-// 展示：正面（品质色）在屏幕中央，轻微摆动
-drawCardFace(p.x, p.y, Math.sin(revealT * 0.05) * 0.03, CW * 1.25, CH * 1.25, p.rar, 0, 1, 0.12);
-const R = RAR[p.rar];
-const by = p.y + CH * 1.25 / 2 + 22;
-ctx.fillStyle = 'rgba(255,255,255,.85)';
-ctx.fillRect(centerX - 56, by - 11, 112, 20);
-ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-ctx.strokeRect(centerX - 56.5, by - 11.5, 113, 21);
-ctx.fillStyle = R.color;
-ctx.font = 'bold 13px "Courier New",monospace';
-ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-ctx.fillText('+' + R.score + ' 分 · ' + R.name, centerX, by);
-}
-}
-if (goldT > 0) goldT--;
-if (goldFxT > 0) {
-const gp = 1 - goldFxT / GOLD_FX_MAX;
-const env = Math.sin(Math.min(1, gp * 1.05) * Math.PI);
-ctx.save();
-ctx.globalCompositeOperation = 'lighter';
-ctx.globalAlpha = 0.16 * env;
-const gg = ctx.createRadialGradient(centerX, revealY, 10, centerX, revealY, Math.max(W, H) * 0.6);
-gg.addColorStop(0, '#ffe9a8');
-gg.addColorStop(1, 'rgba(255,220,120,0)');
-ctx.fillStyle = gg;
-ctx.fillRect(0, 0, W, H);
-for (let i = 0; i < 26; i++) {
-const a = i / 26 * Math.PI * 2 + gp * 4;
-const rr = Math.max(W, H) * (0.3 + 0.35 * ((i % 5) / 4));
-ctx.fillStyle = 'rgba(255,230,150,.5)';
-ctx.fillRect(centerX + Math.cos(a) * rr - 3, revealY + Math.sin(a) * rr - 3, 6, 6);
-}
-ctx.restore();
-goldFxT--;
-}
-// 飘分
-for (let i = floats.length - 1; i >= 0; i--) {
-const f = floats[i]; f.t++;
-ctx.globalAlpha = Math.max(0, 1 - f.t / 40);
-ctx.font = 'bold 20px "Courier New",monospace';
-ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-ctx.lineWidth = 3; ctx.strokeStyle = '#000';
-ctx.strokeText(f.txt, f.x, f.y - f.t * 1.1);
-ctx.fillStyle = '#ffe066';
-ctx.fillText(f.txt, f.x, f.y - f.t * 1.1);
-ctx.globalAlpha = 1;
-if (f.t > 40) floats.splice(i, 1);
-}
-// 粒子
-for (let i = particles.length - 1; i >= 0; i--) {
-const pt = particles[i]; pt.t++;
-pt.x += pt.vx; pt.y += pt.vy; pt.vy += 0.12;
-ctx.globalAlpha = Math.max(0, 1 - pt.t / pt.life);
-px(pt.x, pt.y, 4, 4, pt.c);
-ctx.globalAlpha = 1;
-if (pt.t > pt.life) particles.splice(i, 1);
-}
-requestAnimationFrame(frame);
-}
-function updateScore() { scoreEl.textContent = total; subEl.textContent = '牌堆 ' + remain + '/' + DECK_SIZE; }
 function renderDex() {
 dexEl.innerHTML = RAR.map((r, i) => '<div><span style="display:inline-block;width:8px;height:8px;background:' + r.color + ';border:1px solid #000"></span> ' + r.name + ' ' + stat[i] + '</div>').join('');
 }
