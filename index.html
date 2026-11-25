@@ -462,12 +462,6 @@ document.addEventListener('mouseup', endAutoDeal);
 // ---- 绘制 ----
 function px(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
 // 扁平像素卡牌（已去掉切割/3D 立体卡牌代码）：flip 1=纯背面 → 0=纯正面
-// 翻面相位：flipT 每跨 1 翻一次面 → 背面(1)→正面(0)→背面(1)→正面(0)…
-function flipAx(ft) {
-const seg = Math.floor(ft), fr = ft - seg;
-const first = (seg % 2 === 0) ? 1 : 0;   // 偶数段从背面起，奇数段从正面起
-return fr < 0.5 ? first : 1 - first;
-}
 function drawCardFace(x, y, rot, w, h, rar, flip) {
 const R = rar != null ? RAR[rar] : null;
 const backAmt = (flip != null) ? Math.max(0, Math.min(1, flip)) : (R ? 0 : 1);
@@ -698,17 +692,17 @@ const e = 1 - Math.pow(1 - p.t, 3);
 p.x += (p.tx - p.x) * 0.18;
 p.y += (p.ty - p.y) * 0.18;
 p.rot += (p.trot - p.rot) * 0.18;
-const hi = RAR[p.rar].score >= 5;                      // 橙/红：放大更多
-const flipMax = hi ? 3 : 1;                            // 橙/红：背→正→背→正 三次翻转；其余只翻一次
 // 飞行保持背面；后半段绕横轴翻滚，正面（品质色）朝上
-if (p.t > 0.45) p.flipT = Math.min(flipMax, p.flipT + 0.07);
-const ax = flipAx(p.flipT);
+if (p.t > 0.45) p.flipT = Math.min(1, p.flipT + 0.07);
+if (p.flipT >= 1 && p.flipT > 0 && p.flipT < 0.001) p.flipT = 1;
+const ax = p.flipT <= 0 ? 1 : (p.flipT >= 1 ? 0 : (p.flipT < 0.5 ? 1 : 0));
+const hi = RAR[p.rar].score >= 5;                      // 橙/红：放大更多
 if (hi) {
 const pulse = 1 + Math.sin(revealT * 0.18) * 0.05;    // 呼吸缩放
 if (p.scale == null) p.scale = 1.35;
 p.scale += (1.35 * pulse - p.scale) * 0.2;
 } else p.scale = 1.25;
-if (hi) {                                              // 橙/红：绕中轴只转一整圈
+if (hi && p.flipT >= 1) {                                   // 橙/红：绕中轴只转一整圈
 if (p.spinAcc == null) p.spinAcc = 0;
 if (p.spinAcc < Math.PI * 2) {
 const d = Math.min(Math.PI * 2 - p.spinAcc, 0.06);
@@ -716,7 +710,7 @@ p.rot += d; p.spinAcc += d;
 }
 }
 drawCardFace(p.x, p.y, p.rot, CW * (p.scale || 1.25), CH * (p.scale || 1.25), p.rar, ax);
-if (ax === 0 && !p.flashDone) {                        // 首次翻到正面时触发特效
+if (p.flipT > 0 && !p.flashDone) {
 p.flashDone = true;
 if (RAR[p.rar].score >= 5) {
 goldT = GOLD_MAX;
@@ -731,7 +725,7 @@ t: 0, life: 22 + Math.random() * 14, c: RAR[p.rar].color
 });
 }
 }
-if (p.t >= 1 && p.flipT >= flipMax) confirmReveal();
+if (p.t >= 1 && p.flipT >= 1) confirmReveal();
 } else {
 // 展示：正面（品质色）在屏幕中央，轻微摆动
 const isHi = RAR[p.rar].score >= 5;
