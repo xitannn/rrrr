@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六个纸片片</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background-color: #f7f3e9;
+            padding: 24px 16px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .title {
+            font-size: 32px;
+            font-weight: 600;
+        }
+        .btn-group-top {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            padding: 8px 18px;
+            border: 1px solid #c9c2b6;
+            border-radius: 999px;
+            background: #fff;
+            font-size: 15px;
+            color: #444;
+        }
+        .grid-wrap {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            min-height: 180px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 2px 8px #00000008;
+        }
+        .card-dot {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e2d9cc;
+        }
+        .card-no {
+            font-size: 16px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        .card-text {
+            font-size: 22px;
+            font-weight: 500;
+            margin-top: 80px;
+            cursor: pointer;
+            min-height: 30px;
+        }
+        .bottom-btn-group {
+            display: flex;
+            gap: 16px;
+        }
+        .bottom-btn-group .btn {
+            flex: 1;
+            padding: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">六个纸片片</div>
+        <div class="btn-group-top">
+            <button class="btn" id="copyLink">复制链接</button>
+            <button class="btn" id="clearAll">清空</button>
+        </div>
+    </div>
+
+    <div class="grid-wrap">
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.1</div>
+            <div class="card-text" data-index="0">第一个</div>
+        </div>
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.2</div>
+            <div class="card-text" data-index="1">第二个</div>
+        </div>
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.3</div>
+            <div class="card-text" data-index="2">第三个</div>
+        </div>
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.4</div>
+            <div class="card-text" data-index="3">第四个</div>
+        </div>
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.5</div>
+            <div class="card-text" data-index="4">第五个</div>
+        </div>
+        <div class="card">
+            <div class="card-dot"></div>
+            <div class="card-no">NO.6</div>
+            <div class="card-text" data-index="5">第六个</div>
+        </div>
+    </div>
+
+    <div class="bottom-btn-group">
+        <button class="btn" id="export">导出备份</button>
+        <button class="btn" id="import">导入</button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
+    </div>
+
+<script>
+    const defaultData = ["第一个", "第二个", "第三个", "第四个", "第五个", "第六个"];
+    let data = [...defaultData];
+    const elList = document.querySelectorAll('.card-text');
+
+    // 从url读取数据
+    function loadFromUrl() {
+        const hash = location.hash.slice(1);
+        if (!hash) return;
+        try {
+            const decodeStr = decodeURIComponent(hash);
+            const arr = JSON.parse(decodeStr);
+            if (Array.isArray(arr) && arr.length === 6) {
+                data = arr;
+            }
+        } catch(e) {}
+    }
+
+    function render() {
+        elList.forEach(el => {
+            const idx = Number(el.dataset.index);
+            el.innerText = data[idx];
+        })
+    }
+
+    // 点击编辑
+    elList.forEach(el => {
+        el.onclick = function() {
+            const idx = Number(this.dataset.index);
+            const val = prompt("编辑内容", data[idx]);
+            if(val !== null) {
+                data[idx] = val;
+                render();
+                updateHash();
+            }
+        }
+    })
+
+    function updateHash() {
+        const str = JSON.stringify(data);
+        location.hash = encodeURIComponent(str);
+    }
+
+    // 复制链接
+    document.getElementById('copyLink').onclick = async function() {
+        const url = location.href;
+        await navigator.clipboard.writeText(url);
+        alert("链接已复制！发给别人打开就能看到内容");
+    }
+
+    // 清空
+    document.getElementById('clearAll').onclick = function() {
+        if(confirm("确定清空全部内容？")) {
+            data = [...defaultData];
+            render();
+            updateHash();
+        }
+    }
+
+    // 导出备份
+    document.getElementById('export').onclick = function() {
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "六格备份.json";
+        a.click();
+    }
+
+    // 导入
+    document.getElementById('import').onclick = function() {
+        document.getElementById('importFile').click();
+    }
+    document.getElementById('importFile').onchange = function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const arr = JSON.parse(ev.target.result);
+                if(Array.isArray(arr) && arr.length ===6) {
+                    data = arr;
+                    render();
+                    updateHash();
+                } else alert("备份文件格式不对");
+            } catch(err) {
+                alert("读取失败");
+            }
+        }
+        reader.readAsText(file);
+    }
+
+    loadFromUrl();
+    render();
+</script>
+</body>
+</html>
