@@ -149,13 +149,11 @@ font:bold 12px system-ui,sans-serif;color:#fff;background:#141018;border:3px sol
   <div class="logo">卡 牌 抽 卡<small>选择模式开始</small></div>
   <div class="modes">
     <div class="mode" data-m="tarot">
-      <h3>塔罗占卜 · 78 张</h3>
-      <p>78 张牌围成圆逆时针快转，只显示右半圆。按住牌面蓄力，松手或移开会衰减，满 10 格选中，共 3 张 → 翻开看牌义。</p>
+      <h3>塔罗牌模式</h3>
       <div class="mini" id="miniTarot"></div>
     </div>
     <div class="mode" data-m="pixel">
-      <h3>像素连抽 · 五回合</h3>
-      <p>按住屏幕发牌 → 洗牌分五叠 → 每回合各取一张，共 5 回合，累计积分看品质分布。</p>
+      <h3>连抽模式</h3>
       <div class="mini" id="miniPixel"></div>
     </div>
   </div>
@@ -237,6 +235,19 @@ function drawBtn(label,x,y,w,h){
   ctx.fillStyle='#fff';ctx.fillRect(x+3,y+3,w-6,h-6);
   ctx.fillStyle=INK;ctx.font='bold 13px system-ui,sans-serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(label,x+w/2,y+h/2);
+}
+/* 黑边方框按钮：粗黑描边 + 硬阴影，用于 AI 解读 */
+function drawBoxBtn(label,x,y,w,h,opt){
+  opt=opt||{};
+  var bg=opt.bg||PAPER, fg=opt.fg||INK, lw=opt.lw||3;
+  ctx.fillStyle=INK; ctx.fillRect(x+lw,y+lw,w,h);
+  ctx.fillStyle=bg;  ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle=fg; ctx.lineWidth=lw;
+  ctx.strokeRect(x+lw/2,y+lw/2,w-lw,h-lw);
+  ctx.fillStyle=fg;
+  ctx.font=opt.font||'bold 14px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(label,x+w/2,y+h/2);
 }
 function wrapText(t,maxW){
@@ -574,9 +585,12 @@ enterScatter(){
 // 摊牌区：点击一张牌翻开它（正逆位在此刻决定）
 flipCurrent(p){
   const list=this.pickedCards;
+  const cw=FINALE_CW(), ch=cw*1.42;
+  const gap=Math.max(8, Math.min(20,(W-24-cw*3)/2));
+  const y=H*0.16+ch/2;
   for(let i=0;i<list.length;i++){
-    const q=this.layoutPos(i);
-    if(Math.abs(p.x-q.x)<this.CW*0.62 && Math.abs(p.y-q.y)<this.CH*0.62){
+    const q={x:centerX()-(cw*3+gap*2)/2+cw/2+i*(cw+gap), y:y};
+    if(Math.abs(p.x-q.x)<cw*0.62 && Math.abs(p.y-q.y)<ch*0.7){
       const c=list[i]; if(!c) return true;
       // 未翻过的牌：翻开即定正逆位（无翻牌动画，直接显示正面），且不再翻回
       if(!c.flipped){
@@ -699,48 +713,87 @@ drawScatter(){
   }
   // 已抽出的三张停在摊牌位，仍为背面
   for(let i=0;i<this.pickedCards.length;i++){
-    const c=this.pickedCards[i], p=this.layoutPos(i);
+    const c=this.pickedCards[i], p=this.sidePos(i);
     const e=clamp(this.animT/26,0,1);
     c.x=p.x; c.y=p.y;
     const fx=c.sx+(p.x-c.sx)*easeOut(e), fy=c.sy+(p.y-c.sy)*easeOut(e)-this.CH*0.2*Math.sin(easeOut(e)*Math.PI);
     if(e<1) drawBack(fx,fy,0,this.CW,this.CH,1); else drawBack(p.x,p.y,0,this.CW,this.CH,1);
   }
 },
-// 三张依次排列在屏幕中部
+// 三张依次排列在屏幕中部（横向）
 layoutPos(i){
   const cw=this.CW;
   const gap=Math.max(10, Math.min(22,(W-24-cw*3)/2));
   const y=H*0.44;
   return {x:centerX()-(cw*3+gap*2)/2+cw/2+i*(cw+gap), y:y};
 },
+// 左侧空白处竖排排列（选中后的牌统一叠放于此）
+sidePos(i){
+  const cw=this.CW, ch=this.CH;
+  const x=Math.max(cw*0.62+10, W*0.17);
+  const gap=Math.min(ch*0.34, (H*0.62-ch*1.3)/2);
+  const top=H*0.24+ch/2;
+  return {x:x, y:top+i*gap};
+},
 drawLayout(){
   const list=this.pickedCards;
+  const cw=FINALE_CW(), ch=cw*1.42;
+  const gap=Math.max(8, Math.min(20,(W-24-cw*3)/2));
+  const y=H*0.16+ch/2;
   for(let i=0;i<list.length;i++){
-    const c=list[i], p=this.layoutPos(i);
-    c.x=p.x; c.y=p.y;
+    const c=list[i];
+    const x=centerX()-(cw*3+gap*2)/2+cw/2+i*(cw+gap);
+    c.x=x; c.y=y;
+    const on=(i===this.readingIdx);
+    if(on){ ctx.fillStyle=INK; ctx.fillRect(x-cw/2-5, y-ch/2-5, cw+10, ch+10); }
     if(c.flipped){
       // 已翻开：直接显示正面，无翻牌动画，也不会翻回背面
-      tarotFace(c,p.x,p.y,0,this.CW,this.CH);
+      tarotFace(c,x,y,0,cw,ch);
     }else{
-      drawBack(p.x,p.y,0,this.CW,this.CH,1);
+      drawBack(x,y,0,cw,ch,1);
     }
-    ctx.fillStyle=i===this.readingIdx?INK:'#6b6574';
-    ctx.font=(i===this.readingIdx?'bold ':'')+'10px system-ui,sans-serif';
+    ctx.fillStyle=on?INK:'#6b6574';
+    ctx.font=(on?'bold ':'')+'10px system-ui,sans-serif';
     ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillText((i+1)+'.', p.x, p.y+this.CH/2+5);
+    ctx.fillText((i+1)+'.', x, y+ch/2+4);
   }
   if(this.readingIdx>list.length-1) this.readingIdx=list.length-1;
   // 只有点击过某张牌（该牌已翻开）才显示释义；未点击不出现任何牌义
   const c=list[this.readingIdx];
-  if(list.length>=3 && c && c.flipped && this.animT>26){ this.drawReading(c); }
-  else if(list.length>=3 && this.animT>26){
+  const top=y+ch/2+18;
+  if(list.length>=3 && c && c.flipped && this.animT>6){ this.drawReading(c,{x:22,w:W-44,top:top}); }
+  else if(list.length>=3 && this.animT>6){
     // 三张都还是背面：提示玩家点击翻牌看释义
     ctx.fillStyle='#8a8692';ctx.font='10px system-ui,sans-serif';
     ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillText('点击任意一张牌翻开 · 查看牌义与正逆位', centerX(), H*0.66);
+    ctx.fillText('点击下方任意一张牌翻开', centerX(), top);
+    ctx.fillText('查看牌义与正逆位', centerX(), top+14);
   }
 },
-drawReading(c){
+drawReading(c,col){
+  if(col){
+    // 横向牌列下方排版：牌名 + 牌义居中
+    const x=col.x, mw=col.w;
+    const y0=(col.top!=null)?col.top:H*0.22;
+    ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.fillStyle=INK;ctx.font='600 13px system-ui,sans-serif';
+    ctx.fillText(c.name+(c.rev?' · 逆位':' · 正位'), centerX(), y0, mw);
+    ctx.fillStyle='#6b6574';ctx.font='10px system-ui,sans-serif';
+    ctx.fillText(c.arc==='大'?'大阿卡纳':(c.suit+' · '+c.el), centerX(), y0+18, mw);
+    let ty=y0+38;
+    ctx.fillStyle='#3d3846';ctx.font='10px system-ui,sans-serif';
+    ctx.textAlign='left';
+    for(const l of wrapText(c.img,mw)){ if(ty>H*0.60) break; ctx.fillText(l,x,ty); ty+=13; }
+    ty+=4;
+    ctx.fillStyle=INK;ctx.font='11px system-ui,sans-serif';
+    for(const l of wrapText((c.rev?c.revMean:c.upMean),mw)){ if(ty>H*0.72) break; ctx.fillText(l,x,ty); ty+=14; }
+    ctx.fillStyle='#8a8692';ctx.font='9px system-ui,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('可点其他牌切换查看', centerX(), Math.min(H*0.75, ty+6), mw);
+    // AI 解读按钮（仅当有牌已翻开时显示）
+    if(c.flipped){ const ab=this.aiBtnRect(); drawBoxBtn('✨ AI 解读',ab.x,ab.y,ab.w,ab.h,{bg:'#fff',lw:3}); }
+    return;
+  }
   ctx.fillStyle=INK;ctx.font='600 13px system-ui,sans-serif';
   ctx.textAlign='center';ctx.textBaseline='top';
   ctx.fillText(c.name+(c.rev?' · 逆位':' · 正位'), centerX(), H*0.66);
@@ -757,7 +810,7 @@ drawReading(c){
   ctx.textAlign='center';ctx.fillStyle='#8a8692';ctx.font='10px system-ui,sans-serif';
   ctx.fillText(c.flipped?'已翻开保持正面 · 可点其他牌切换查看':'点击一张背面牌翻开查看牌义', centerX(), this.btnY()-14);
   // AI 解读按钮（仅当有牌已翻开时显示）
-  if(c.flipped){ const ab=this.aiBtnRect(); drawBtn('✨ AI 解读',ab.x,ab.y,ab.w,ab.h); }
+  if(c.flipped){ const ab=this.aiBtnRect(); drawBoxBtn('✨ AI 解读',ab.x,ab.y,ab.w,ab.h,{bg:'#fff',lw:3}); }
 },
 drawPicked(){
   const c=this.picked; if(!c) return;
@@ -875,10 +928,18 @@ drawFinal(){
   ctx.fillText('点击上方切换牌 · 右上角 ✕ 关闭', centerX(), this.btnY()-14);
   // AI 解读按钮
   const abw=Math.min(220,W-40),abh=this.btnH(),abx=centerX()-abw/2,aby=this.btnY()-14-abh-6;
-  drawBtn('✨ AI 解读',abx,aby,abw,abh);
+  drawBoxBtn('✨ AI 解读',abx,aby,abw,abh,{bg:'#fff',lw:3});
   ctx.restore();
 },
-aiBtnRect(){ const abw=Math.min(220,W-40),abh=this.btnH(); return {x:centerX()-abw/2,y:this.btnY()-14-abh-6,w:abw,h:abh}; },
+aiBtnRect(){
+  const abh=this.btnH();
+  if(this.state===this.S.LAYOUT){
+    const abw=Math.min(220,W-40);
+    return {x:centerX()-abw/2, y:this.btnY()-abh-6, w:abw, h:abh};
+  }
+  const abw=Math.min(220,W-40);
+  return {x:centerX()-abw/2,y:this.btnY()-14-abh-6,w:abw,h:abh};
+},
 frame(){
   const S=this.S;
   if(this.state===S.SHUFFLE){
@@ -1003,7 +1064,7 @@ const DEAL_MS=3000, DEAL_MOVE_MIN=14;
 const Pixel={
 CW:0,CH:0,
 S:{IDLE:0,DEAL:1,SHUFFLE:2,FAN:3,REVEAL:4,OVER:5},
-state:0,round:1,roundScores:[],roundStat:[],remain:DECK_SIZE,roundBase:0,
+state:0,round:1,roundScores:[], scoreLog:[],roundStat:[],remain:DECK_SIZE,roundBase:0,
 roundFinished:false,gameOver:false,
 deck:[],fan:[],piles:[],picked:null,sideCards:[],stat:[0,0,0,0,0,0],
 floats:[],particles:[],dealCount:0,dealBag:[],fxEmit:null,
@@ -1012,7 +1073,7 @@ dealTimer:null,pointerDown:false,dealX:0,dealY:0,dealSlot:0,lastMX:0,lastMY:0,
 resize(){ this.CW=Math.min(70,W/6.2); this.CH=this.CW*1.42; },
 enter(){ /* 保留进度 */ },
 start(){
-  this.round=1;this.roundScores=[];this.roundStat=[];this.roundBase=0;
+  this.round=1;this.roundScores=[];this.roundStat=[];this.roundBase=0;this.scoreLog=[];
   this.gameOver=false;this.stat=[0,0,0,0,0,0];
   this.beginNextRound();
 },
@@ -1175,6 +1236,7 @@ confirmReveal(){
   const R=P_RAR[this.picked.rar];
   const total0=this.total();
   this.stat[this.picked.rar]++;
+  this.scoreLog.push({round:this.round,rar:this.picked.rar,score:R.score});
   this.floats.push({x:centerX(),y:H*0.46-this.CH*0.8,txt:'+'+R.score,t:0});
   particleBurst(this.particles,centerX(),H*0.46,R.fill,20,4);
   if(R.score>=5 && this.fxEmit && this.fxEmit.left<30) this.fxEmit.left=30;
@@ -1184,7 +1246,7 @@ confirmReveal(){
   if(this.pileRemain()<=0) this.finishRound();
   else this.tip='点击空白处继续抽下一张';
 },
-total(){ return this.roundScores.reduce((a,b)=>a+b,0); },
+total(){ return this.scoreLog.reduce((a,b)=>a+(b.score||0),0); },
 finishRound(){
   if(this.roundFinished) return;
   this.roundFinished=true;
@@ -1429,6 +1491,31 @@ frame(){
     ctx.fillStyle=p.col;ctx.fillRect(p.x,p.y,sz,sz);
     ctx.globalAlpha=1;
     if(p.t>p.life) this.particles.splice(i,1);
+  }
+  this.drawScoreboard();
+},
+/* 右上角计分板：只累计每张牌的得分 */
+drawScoreboard(){
+  const S=this.S;
+  if(this.scoreLog.length===0) return;
+  const bw=88, bh=32;
+  const bx=W-bw-10, by=SAFE_T+46;
+  ctx.fillStyle=INK; ctx.fillRect(bx+3,by+3,bw,bh);
+  ctx.fillStyle='rgba(255,255,255,.94)'; ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle=INK; ctx.lineWidth=2; ctx.strokeRect(bx,by,bw,bh);
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillStyle='#5d576b'; ctx.font='9px system-ui,sans-serif';
+  ctx.fillText('累计得分', bx+7, by+9);
+  ctx.fillStyle=INK; ctx.font='bold 16px system-ui,sans-serif';
+  ctx.fillText(String(this.total()), bx+7, by+22);
+  // 最近一张牌的得分（若本回合已翻牌）
+  if(this.picked && this.revealed && this.picked.rar!=null){
+    const R=P_RAR[this.picked.rar];
+    ctx.fillStyle=R.fill; ctx.fillRect(bx+bw-24,by+10,14,14);
+    ctx.strokeStyle=INK; ctx.lineWidth=1.2; ctx.strokeRect(bx+bw-24,by+10,14,14);
+    ctx.fillStyle=R.ink; ctx.font='bold 8px system-ui,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('+'+R.score, bx+bw-17, by+17);
   }
 },
 tap(p){
@@ -1741,9 +1828,28 @@ function wheelPick(){
   WHEEL.prog=0; WHEEL.acc=0; WHEEL.down=false; WHEEL.hot=-1; WHEEL.lastHot=-1;
   particleBurst(Tarot.particles, WHEEL.cx+Math.cos(WHEEL.ang+i*WHEEL_PER)*WHEEL.R,
     WHEEL.cy+Math.sin(WHEEL.ang+i*WHEEL_PER)*WHEEL.R, GOLD, 30, 4.5);
+  c.fx=WHEEL.selX; c.fy=WHEEL.selY; c.ft=0;   // 选中后向左飞入的起点
   Tarot.pickedCards.push(c);
   Tarot.syncHud();
-  if(Tarot.pickedCards.length>=3){ WHEEL.active=false; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0; Tarot.enterScatter(); }
+  // 三张齐：不立即跳转，交给 drawWheel 做“左侧→中间横向”的合并动画
+  if(Tarot.pickedCards.length>=3){ Tarot.mergeT=0; }
+}
+// 已选牌：左侧竖排叠放位置 / 三张合并后居中横向位置
+function FINALE_CW(){ return Math.min(W*0.25, WHEEL.CW*1.45); }   // 最后三张横排时的放大牌宽
+function wheelSideSlot(i){
+  const cw=WHEEL.CW, ch=WHEEL.CH;
+  // 进度条占左侧（约 W*0.045+bw），牌列整体右移，避免与其重叠
+  const barRight=Math.max(12,W*0.045)+clamp(W*0.045,12,18)+8;
+  const x=Math.max(barRight+cw*0.55, W*0.30);
+  const gap=Math.min(ch*0.30,(H*0.5-ch*1.15)/2);
+  const top=H*0.24+ch/2;
+  return {x:x, y:top+i*gap};
+}
+function wheelCenterSlot(i,n){
+  const cw=FINALE_CW(), ch=cw*1.42;
+  const gap=Math.max(8, Math.min(20,(W-24-cw*3)/2));
+  const y=H*0.16+ch/2;
+  return {x:centerX()-(cw*3+gap*2)/2+cw/2+i*(cw+gap), y:y, cw:cw, ch:ch};
 }
 function wheelGoldOverlay(x,y,w,h,rot,t){       // 金色覆盖版卡背（翘起的牌）
   ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0);
@@ -1830,6 +1936,31 @@ function drawWheel(){
     ctx.strokeStyle=GOLD; ctx.lineWidth=bw*0.5*WHEEL.flash;
     ctx.strokeRect(bw/2,bw/2,W-bw,H-bw);
     ctx.restore();
+  }
+  // ===== 已选牌：选中后向左飞入竖排叠放；三张齐后合并到中间横向排列 =====
+  const pc=Tarot.pickedCards;
+  const merging=pc.length>=3;
+  if(merging) Tarot.mergeT=Math.min(24,(Tarot.mergeT||0)+1);
+  const me=easeOut((Tarot.mergeT||0)/24);
+  for(let k=0;k<pc.length;k++){
+    const card=pc[k];
+    card.ft=Math.min(20,(card.ft==null?20:card.ft)+1);
+    const e=easeOut(card.ft/20);
+    const s0=wheelSideSlot(k);
+    let tx=s0.x, ty=s0.y, s1=null;
+    if(merging){ s1=wheelCenterSlot(k,3); tx=s0.x+(s1.x-s0.x)*me; ty=s0.y+(s1.y-s0.y)*me; }
+    const x=card.fx+(tx-card.fx)*e;
+    const y=card.fy+(ty-card.fy)*e - ch*0.18*Math.sin(e*Math.PI);
+    const mcw=(s1&&s1.cw!=null)? cw+(s1.cw-cw)*me : cw;
+    const mch=(s1&&s1.ch!=null)? ch+(s1.ch-ch)*me : ch;
+    drawBack(x,y,0,mcw,mch,1);
+    ctx.fillStyle=INK; ctx.font='bold 9px system-ui,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(String(k+1), x+cw/2+5, y-ch/2+6);
+  }
+  if(merging && (Tarot.mergeT||0)>=24){
+    WHEEL.active=false; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0;
+    Tarot.state=Tarot.S.LAYOUT; Tarot.animT=0; Tarot.readingIdx=-1; Tarot.syncHud();
   }
   // 圆心菱形（圆心在屏外，这里不显示，仅保留旋转枢轴）
   if(cx > -cw && cx < W+cw && cy > -ch && cy < H+ch) diamond(cx,cy,Math.max(5,cw*0.16));
