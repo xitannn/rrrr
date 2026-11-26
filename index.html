@@ -43,6 +43,11 @@ canvas{display:block;touch-action:none;}
 #ask button{background:#141018;border:2px solid #141018;color:#fff;padding:9px 18px;
   border-radius:3px;font:14px system-ui,sans-serif;}
 #ask button.ghost{background:#fff;color:#141018;}
+/* 牌面图鉴入口：位于"开始洗牌"下方 */
+#ask #qDex{width:100%;max-width:330px;background:#fff;color:#141018;
+  border:2px solid #141018;border-radius:3px;padding:9px 14px;
+  font:13px system-ui,sans-serif;letter-spacing:2px;box-shadow:3px 3px 0 #141018;}
+#ask #qDex:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #141018;}
 #ask .tpl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:340px;}
 #ask .tpl span{background:#fff;border:1px solid #141018;color:#333;padding:5px 9px;
   border-radius:2px;font:12px system-ui,sans-serif;}
@@ -119,6 +124,7 @@ font:bold 12px system-ui,sans-serif;color:#fff;background:#141018;border:3px sol
     <button id="qOk">开始洗牌</button>
     <button id="qSkip" class="ghost">直接开始</button>
   </div>
+  <button id="qDex">牌面图鉴 · 78 张</button>
 </div>
 
 <div id="mask">
@@ -382,7 +388,7 @@ for(let s=0;s<4;s++)for(let r=0;r<14;r++){
     img:ELEMENTS[s]+'：'+nm+'的牌面景象',upMean:mn[0],revMean:mn[1],el:ELEMENTS[s]});}
 function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-// 黑白线稿牌面（与卡背同一套黑白语言）
+// 黑白线稿牌面（常见塔罗牌样式，简洁不精细）
 function drawTarotArt(c,x,y,w,h){
   const r=mulberry32(hashStr(c.name));
   const pad=w*0.14, ax=x+pad, ay=y+pad*1.3, aw=w-pad*2, ah=h-pad*2.6;
@@ -391,26 +397,123 @@ function drawTarotArt(c,x,y,w,h){
   ctx.fillStyle=ctx.createPattern(DOT_TEX,'repeat');ctx.fillRect(ax,ay,aw,ah);
   const cx=ax+aw/2, cy=ay+ah/2;
   ctx.strokeStyle=INK;ctx.lineWidth=1;
+  // —— 常用小画笔 ——
+  const L=(px1,py1,px2,py2)=>{ctx.beginPath();ctx.moveTo(px1,py1);ctx.lineTo(px2,py2);ctx.stroke();};
+  const circ=(px,py,rr,fill)=>{ctx.beginPath();ctx.arc(px,py,rr,0,Math.PI*2);fill?ctx.fill():ctx.stroke();};
+  const star=(px,py,rr,pts)=>{ctx.beginPath();for(let i=0;i<=pts*2;i++){const a=-Math.PI/2+i*Math.PI/pts;const pr=i%2?rr*0.42:rr;const qx=px+Math.cos(a)*pr,qy=py+Math.sin(a)*pr;i?ctx.lineTo(qx,qy):ctx.moveTo(qx,qy);}ctx.closePath();ctx.fill();};
+  const person=(px,py,s)=>{ctx.beginPath();ctx.arc(px,py-s*0.9,s*0.28,0,Math.PI*2);ctx.stroke();L(px,py-s*0.6,px,py+s*0.5);L(px-s*0.4,py-s*0.25,px+s*0.4,py-s*0.25);L(px,py+s*0.5,px-s*0.35,py+s*1.1);L(px,py+s*0.5,px+s*0.35,py+s*1.1);};
   if(c.arc==='大'){
-    const rays=6+(c.id%6)*2;
-    for(let i=0;i<rays;i++){const a=i*Math.PI*2/rays;
-      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*aw*0.46,cy+Math.sin(a)*ah*0.44);ctx.stroke();}
-    const rings=1+(c.id%3);
-    for(let k=0;k<rings;k++){ctx.beginPath();ctx.arc(cx,cy,aw*0.28-k*aw*0.07,0,Math.PI*2);ctx.stroke();}
-    ctx.beginPath();
-    const sides=(c.id%7)+3;
-    for(let i=0;i<=sides;i++){const a=-Math.PI/2+i*Math.PI*2/sides;
-      const rr2=aw*0.21*(i%2?0.5:1);
-      const px=cx+Math.cos(a)*rr2, py=cy+Math.sin(a)*rr2;
-      i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
-    ctx.closePath();ctx.stroke();
-    ctx.fillStyle=INK;ctx.beginPath();
-    for(let i=0;i<5;i++){const a=-Math.PI/2+i*Math.PI*2/5;
-      const px=cx+Math.cos(a)*aw*0.11, py=cy+Math.sin(a)*aw*0.11;
-      i?ctx.lineTo(px,py):ctx.moveTo(px,py);}
-    ctx.closePath();ctx.fill();
-    for(let i=0;i<7;i++){ctx.fillStyle=(i+c.id)%2?INK:PAPER;
-      ctx.fillRect(ax+aw*0.14+i*aw*0.103, ay+ah*0.87, aw*0.055, ah*0.05);}
+    ctx.fillStyle=INK;
+    const nm=c.name;
+    // 顶部罗马数字
+    ctx.font=Math.max(6,w*0.075)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    const RN=['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+    ctx.fillText(RN[c.id]||'', cx, ay+ah*0.08);
+    if(nm==='愚者'){ // 悬崖边前行、肩扛包袱
+      L(ax+aw*0.1,ay+ah*0.72,ax+aw*0.55,ay+ah*0.72);
+      person(cx-aw*0.05,cy+ah*0.12,aw*0.16);
+      L(cx+aw*0.08,cy-ah*0.02,cx+aw*0.2,cy-ah*0.14);circ(cx+aw*0.22,cy-ah*0.16,aw*0.05,true);
+      star(cx+aw*0.28,ay+ah*0.2,aw*0.06,4);
+    }else if(nm==='魔术师'){ // 无穷符号 + 桌上四法器
+      ctx.beginPath();ctx.arc(cx-aw*0.08,cy-ah*0.1,aw*0.07,0,Math.PI*2);ctx.arc(cx+aw*0.08,cy-ah*0.1,aw*0.07,0,Math.PI*2);ctx.stroke();
+      L(ax+aw*0.18,ay+ah*0.82,ax+aw*0.82,ay+ah*0.82);
+      ['♣','♥','♠','◆'].forEach((s,i)=>{ctx.fillText(s,ax+aw*(0.24+i*0.18),ay+ah*0.76);});
+      L(cx-aw*0.02,cy-ah*0.02,cx-aw*0.12,cy-ah*0.22);L(cx+aw*0.02,cy-ah*0.02,cx+aw*0.12,cy-ah*0.22);
+    }else if(nm==='女祭司'){ // 双柱间的女子 + 月
+      L(ax+aw*0.24,ay+ah*0.25,ax+aw*0.24,ay+ah*0.8);L(ax+aw*0.76,ay+ah*0.25,ax+aw*0.76,ay+ah*0.8);
+      ctx.textAlign='center';ctx.fillText('B', ax+aw*0.24, ay+ah*0.22);ctx.fillText('J', ax+aw*0.76, ay+ah*0.22);
+      person(cx,cy+ah*0.18,aw*0.15);
+      ctx.beginPath();ctx.arc(cx,ay+ah*0.16,aw*0.06,Math.PI*0.15,Math.PI*0.85);ctx.stroke();
+    }else if(nm==='皇后'){ // 星冠女子 + 心形/丰饶
+      person(cx,cy+ah*0.14,aw*0.16);
+      for(let i=0;i<5;i++)star(cx-aw*0.16+i*aw*0.08,ay+ah*0.16,aw*0.035,5);
+      ctx.beginPath();ctx.moveTo(cx,ay+ah*0.6);ctx.bezierCurveTo(cx-aw*0.12,ay+ah*0.5,cx-aw*0.12,ay+ah*0.66,cx,ay+ah*0.7);ctx.bezierCurveTo(cx+aw*0.12,ay+ah*0.66,cx+aw*0.12,ay+ah*0.5,cx,ay+ah*0.6);ctx.fill();
+    }else if(nm==='皇帝'){ // 坐着的男子 + 公羊头
+      person(cx,cy+ah*0.16,aw*0.16);
+      L(cx-aw*0.22,ay+ah*0.7,cx+aw*0.22,ay+ah*0.7);
+      ctx.beginPath();ctx.arc(cx-aw*0.06,ay+ah*0.2,aw*0.05,0,Math.PI*2);ctx.arc(cx+aw*0.06,ay+ah*0.2,aw*0.05,0,Math.PI*2);ctx.stroke();
+    }else if(nm==='教皇'){ // 三重冠 + 双钥
+      person(cx,cy+ah*0.2,aw*0.14);
+      for(let k=0;k<3;k++)L(cx-aw*0.05,ay+ah*(0.14+k*0.05),cx+aw*0.05,ay+ah*(0.14+k*0.05));
+      circ(cx-aw*0.2,cy+ah*0.3,aw*0.05,false);circ(cx+aw*0.2,cy+ah*0.3,aw*0.05,false);
+    }else if(nm==='恋人'){ // 两人 + 上方太阳/天使
+      person(cx-aw*0.16,cy+ah*0.2,aw*0.13);person(cx+aw*0.16,cy+ah*0.2,aw*0.13);
+      circ(cx,ay+ah*0.18,aw*0.08,false);
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;L(cx+Math.cos(a)*aw*0.1,ay+ah*0.18-Math.sin(a)*aw*0.1,cx+Math.cos(a)*aw*0.14,ay+ah*0.18-Math.sin(a)*aw*0.14);}
+    }else if(nm==='战车'){ // 车厢 + 双斯芬克斯
+      ctx.strokeRect(cx-aw*0.16,cy-ah*0.02,aw*0.32,ah*0.24);
+      L(cx,cy-ah*0.02,cx,cy-ah*0.2);ctx.fillStyle=INK;star(cx,cy-ah*0.24,aw*0.05,4);ctx.fillStyle=INK;
+      circ(cx-aw*0.26,cy+ah*0.12,aw*0.06,false);circ(cx+aw*0.26,cy+ah*0.12,aw*0.06,false);
+    }else if(nm==='力量'){ // 女子合上狮口 + 无穷
+      person(cx-aw*0.14,cy,aw*0.15);
+      ctx.beginPath();ctx.arc(cx+aw*0.16,cy+ah*0.05,aw*0.14,0,Math.PI*2);ctx.stroke();
+      L(cx+aw*0.04,cy-ah*0.05,cx+aw*0.28,cy-ah*0.05);
+      ctx.beginPath();ctx.arc(cx,ay+ah*0.16,aw*0.05,0,Math.PI*2);ctx.arc(cx+aw*0.1,ay+ah*0.16,aw*0.05,0,Math.PI*2);ctx.stroke();
+    }else if(nm==='隐士'){ // 长袍老者提灯
+      person(cx-aw*0.04,cy+ah*0.1,aw*0.16);
+      L(cx+aw*0.14,cy+ah*0.05,cx+aw*0.14,cy+ah*0.25);star(cx+aw*0.14,cy+ah*0.28,aw*0.05,4);
+    }else if(nm==='命运之轮'){ // 大轮 + 四角符号
+      circ(cx,cy,aw*0.24,false);circ(cx,cy,aw*0.14,false);
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;L(cx+Math.cos(a)*aw*0.14,cy+Math.sin(a)*aw*0.14,cx+Math.cos(a)*aw*0.24,cy+Math.sin(a)*aw*0.24);}
+      [[0.12,0.12],[0.88,0.12],[0.12,0.88],[0.88,0.88]].forEach(p=>ctx.fillText('✦',ax+aw*p[0],ay+ah*p[1]));
+    }else if(nm==='正义'){ // 天平 + 剑
+      L(cx,ay+ah*0.22,cx,cy+ah*0.2);L(cx-aw*0.2,ay+ah*0.28,cx+aw*0.2,ay+ah*0.28);
+      L(cx-aw*0.2,ay+ah*0.28,cx-aw*0.2,ay+ah*0.36);L(cx+aw*0.2,ay+ah*0.28,cx+aw*0.2,ay+ah*0.36);
+      circ(cx-aw*0.2,ay+ah*0.38,aw*0.04,false);circ(cx+aw*0.2,ay+ah*0.38,aw*0.04,false);
+      L(cx+aw*0.28,cy-ah*0.1,cx+aw*0.28,cy+ah*0.28);
+    }else if(nm==='倒吊人'){ // 倒吊的人 + T形十字
+      L(cx,ay+ah*0.24,cx,cy-ah*0.05);
+      ctx.beginPath();ctx.arc(cx,cy-ah*0.12,aw*0.1,0,Math.PI*2);ctx.stroke();
+      L(cx-aw*0.14,cy+ah*0.02,cx+aw*0.14,cy+ah*0.02);
+      L(cx-aw*0.12,cy+ah*0.24,cx-aw*0.12,cy-ah*0.02);L(cx+aw*0.12,cy+ah*0.24,cx+aw*0.12,cy-ah*0.02);
+      L(cx-aw*0.12,cy+ah*0.24,cx+aw*0.12,cy+ah*0.24);
+    }else if(nm==='死神'){ // 镰刀 + 旗上玫瑰
+      L(cx-aw*0.05,ay+ah*0.25,cx-aw*0.05,ay+ah*0.75);
+      ctx.beginPath();ctx.moveTo(cx-aw*0.05,ay+ah*0.25);ctx.quadraticCurveTo(cx+aw*0.25,ay+ah*0.2,cx+aw*0.28,ay+ah*0.4);ctx.stroke();
+      ctx.beginPath();ctx.arc(cx+aw*0.2,ay+ah*0.3,aw*0.05,0,Math.PI*2);ctx.stroke();
+      star(cx+aw*0.2,ay+ah*0.3,aw*0.03,5);
+    }else if(nm==='节制'){ // 天使在双杯间倒水
+      person(cx,cy-ah*0.02,aw*0.13);
+      circ(cx-aw*0.18,cy+ah*0.22,aw*0.06,false);circ(cx+aw*0.18,cy+ah*0.22,aw*0.06,false);
+      ctx.beginPath();ctx.moveTo(cx-aw*0.18,cy+ah*0.16);ctx.quadraticCurveTo(cx,cy+ah*0.3,cx+aw*0.18,cy+ah*0.16);ctx.stroke();
+    }else if(nm==='魔鬼'){ // 有角头 + 倒五芒星
+      ctx.beginPath();ctx.arc(cx,cy-ah*0.12,aw*0.13,0,Math.PI*2);ctx.stroke();
+      L(cx-aw*0.1,cy-ah*0.22,cx-aw*0.16,cy-ah*0.32);L(cx+aw*0.1,cy-ah*0.22,cx+aw*0.16,cy-ah*0.32);
+      ctx.beginPath();for(let i=0;i<=5;i++){const a=Math.PI/2+i*Math.PI*2/5;const pr=aw*0.1;const qx=cx+Math.cos(a)*pr,qy=cy+ah*0.2+Math.sin(a)*pr;i?ctx.lineTo(qx,qy):ctx.moveTo(qx,qy);}ctx.closePath();ctx.stroke();
+    }else if(nm==='高塔'){ // 塔被雷击 + 坠落冠
+      ctx.strokeRect(cx-aw*0.12,cy-ah*0.05,aw*0.24,ah*0.32);
+      L(cx-aw*0.14,cy-ah*0.05,cx+aw*0.14,cy-ah*0.05);
+      ctx.beginPath();ctx.moveTo(cx+aw*0.05,ay+ah*0.2);ctx.lineTo(cx-aw*0.02,cy-ah*0.08);ctx.lineTo(cx+aw*0.06,cy-ah*0.08);ctx.lineTo(cx-aw*0.04,cy+ah*0.05);ctx.closePath();ctx.stroke();
+      star(cx-aw*0.2,cy-ah*0.12,aw*0.04,3);star(cx+aw*0.22,cy+ah*0.02,aw*0.04,3);
+    }else if(nm==='星星'){ // 大八角星 + 倾倒双水
+      star(cx,ay+ah*0.24,aw*0.12,8);
+      person(cx,cy+ah*0.05,aw*0.12);
+      circ(cx-aw*0.16,cy+ah*0.24,aw*0.05,false);circ(cx+aw*0.16,cy+ah*0.24,aw*0.05,false);
+      for(let i=0;i<4;i++)star(ax+aw*(0.15+i*0.08),ay+ah*0.5,aw*0.03,5);
+    }else if(nm==='月亮'){ // 月 + 双塔小路
+      ctx.beginPath();ctx.arc(cx,ay+ah*0.22,aw*0.1,Math.PI*0.1,Math.PI*0.9);ctx.stroke();
+      circ(cx,ay+ah*0.22,aw*0.1,false);
+      L(ax+aw*0.2,cy-ah*0.05,ax+aw*0.2,cy+ah*0.3);L(ax+aw*0.8,cy-ah*0.05,ax+aw*0.8,cy+ah*0.3);
+      L(cx-aw*0.05,cy+ah*0.32,cx+aw*0.05,cy+ah*0.05);L(cx+aw*0.05,cy+ah*0.32,cx-aw*0.05,cy+ah*0.05);
+      circ(cx,cy+ah*0.34,aw*0.04,true);
+    }else if(nm==='太阳'){ // 太阳 + 向日葵
+      circ(cx,ay+ah*0.24,aw*0.09,false);
+      for(let i=0;i<12;i++){const a=i*Math.PI/6;L(cx+Math.cos(a)*aw*0.11,ay+ah*0.24-Math.sin(a)*aw*0.11,cx+Math.cos(a)*aw*0.15,ay+ah*0.24-Math.sin(a)*aw*0.15);}
+      person(cx,cy+ah*0.2,aw*0.12);
+      L(cx-aw*0.24,cy+ah*0.28,cx-aw*0.24,cy+ah*0.1);circ(cx-aw*0.24,cy+ah*0.06,aw*0.04,true);
+      L(cx+aw*0.24,cy+ah*0.28,cx+aw*0.24,cy+ah*0.1);circ(cx+aw*0.24,cy+ah*0.06,aw*0.04,true);
+    }else if(nm==='审判'){ // 天使吹号 + 起立的人
+      person(cx,ay+ah*0.28,aw*0.12);
+      L(cx+aw*0.1,ay+ah*0.24,cx+aw*0.2,ay+ah*0.18);
+      person(cx-aw*0.14,cy+ah*0.28,aw*0.1);person(cx+aw*0.14,cy+ah*0.28,aw*0.1);
+      L(ax+aw*0.15,cy+ah*0.4,ax+aw*0.85,cy+ah*0.4);
+    }else if(nm==='世界'){ // 花环中的人 + 四活物
+      ctx.beginPath();ctx.arc(cx,cy,aw*0.24,0,Math.PI*2);ctx.stroke();
+      person(cx,cy,aw*0.12);
+      [[0.08,0.08],[0.92,0.08],[0.08,0.92],[0.92,0.92]].forEach(p=>ctx.fillText('✦',ax+aw*p[0],ay+ah*p[1]));
+    }else{ // 兜底：星芒
+      star(cx,cy,aw*0.24,8);
+    }
   }else{
     const n=Math.min(c.rank,10);
     ctx.fillStyle=INK;
@@ -450,18 +553,20 @@ function drawTarotArt(c,x,y,w,h){
   ctx.fillText(c.name,cx,ay-ah*0.02);
   ctx.textAlign='left';
 }
-function tarotFace(c,x,y,rot,w,h){
+function tarotFace(c,x,y,rot,w,h,noMark){
   cardShell(x,y,w,h,rot,true,1);
   ctx.save();ctx.translate(x,y);ctx.rotate(rot||0);
   ctx.fillStyle=PAPER;ctx.fillRect(-w/2+4,-h/2+4,w-8,h*0.16);
   drawTarotArt(c,-w/2+4,-h/2+4,w-8,h-8);
   ctx.strokeStyle=INK;ctx.lineWidth=1;ctx.strokeRect(-w/2+5,-h/2+5,w-10,h-10);
-  ctx.fillStyle=INK;
-  ctx.font=Math.max(6,w*0.085)+'px system-ui,sans-serif';
-  ctx.textAlign='left';ctx.textBaseline='top';
-  ctx.fillText(c.rev?'逆':'正',-w/2+7,-h/2+7);
-  ctx.textAlign='right';
-  ctx.fillText(c.arc==='大'?'大阿':'小阿',w/2-7,-h/2+7);
+  if(!noMark){
+    ctx.fillStyle=INK;
+    ctx.font=Math.max(6,w*0.085)+'px system-ui,sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='top';
+    ctx.fillText(c.rev?'逆':'正',-w/2+7,-h/2+7);
+    ctx.textAlign='right';
+    ctx.fillText(c.arc==='大'?'大阿':'小阿',w/2-7,-h/2+7);
+  }
   diamond(0,h/2-h*0.07,Math.max(3,w*0.055));
   ctx.restore();
 }
@@ -469,13 +574,14 @@ function tarotFace(c,x,y,rot,w,h){
 const Tarot={
 CW:58,CH:84,SAFE_B:0,
 S:{ASK:0,SHUFFLE:1,READY:2,FAN:3,PICKED:4,DEALT:5,RESULT:6,
-   SPREAD:7,LIFT:8,SCATTER:9,LAYOUT:10,WHEEL:11},
+   SPREAD:7,LIFT:8,SCATTER:9,LAYOUT:10,WHEEL:11,GALLERY:12},
 state:0,question:'',
 deck:[],piles:[],fan:[],side:[],picked:null,reading:null,
 pickedCards:[],readingIdx:0,dealtT:0,
 spread:[],scatter:[],animT:0,
 particles:[],floats:[],fanT:0,revealT:0,shuffleT:0,resultScroll:0,flashT:0,
 PILES_N:3,
+gsY:0,gsV:0,gDrag:false,gLastY:0,gMoved:0,gDown:null,gDetail:null,galleryQ:'',
 resize(){
   this.SAFE_B=SAFE_B;
   const SC=Math.max(0.6, Math.min(W/390, H/844, 1.15));
@@ -940,18 +1046,216 @@ aiBtnRect(){
   const abw=Math.min(220,W-40);
   return {x:centerX()-abw/2,y:this.btnY()-14-abh-6,w:abw,h:abh};
 },
+
+/* ================= 牌面图鉴：78 张全览 ================= */
+openGallery(){
+  this.galleryQ=ask.input.value||'';
+  ask.hide();
+  document.getElementById('mask').style.display='none';
+  this.state=this.S.GALLERY;
+  this.gsY=0; this.gsV=0; this.gDrag=false; this.gMoved=0; this.gDown=null; this.gDetail=null;
+  this.particles=[]; this.floats=[];
+  document.getElementById('btnClose').style.display='none';
+  syncUI();
+},
+closeGallery(){
+  this.state=this.S.ASK;
+  this.gDetail=null; this.gsV=0;
+  ask.show(q=>this.start(q));
+  ask.input.value=this.galleryQ||'';
+  syncUI();
+},
+galleryTop(){ return SAFE_T+84; },
+galleryCloseRect(){
+  const w=44,h=26;
+  return {x:W-12-w, y:SAFE_T+48, w:w, h:h};
+},
+galleryLayout(){
+  const top=this.galleryTop();
+  const cols=3, padX=14, gapX=10, gapY=16;
+  const cw=Math.min((W-padX*2-gapX*(cols-1))/cols, 108);
+  const ch=cw*1.42;
+  const totalW=cols*cw+gapX*(cols-1);
+  const x0=(W-totalW)/2;
+  const rowH=ch+gapY;
+  const cards=[], heads=[];
+  let y=top;
+  const section=(title,list,base)=>{
+    heads.push({t:title,x:padX,y:y});
+    y+=20;
+    list.forEach((c,i)=>{
+      const col=i%cols, row=Math.floor(i/cols);
+      cards.push({c:c,x:x0+col*(cw+gapX)+cw/2,y:y+row*rowH+ch/2,w:cw,h:ch});
+    });
+    y+=Math.ceil(list.length/cols)*rowH+8;
+  };
+  section('大阿卡纳 · 22 张', TDECK.slice(0,22));
+  section('小阿卡纳 · 56 张', TDECK.slice(22));
+  return {cards:cards,heads:heads,top:top,height:y,h:this.btnY()-10};
+},
+drawGallery(){
+  // 惯性滚动
+  if(!this.gDrag){
+    if(Math.abs(this.gsV)>0.3){ this.gsY+=this.gsV; this.gsV*=0.94; }
+    else this.gsV=0;
+  }
+  const L=this.galleryLayout();
+  const vh=this.btnY()-10-L.top;
+  const maxS=Math.max(0,L.height-L.top-vh);
+  this.gsY=clamp(this.gsY,0,maxS);
+  const gy=this.gsY;
+
+  // 顶部标题区
+  ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,L.top);
+  ctx.fillStyle=INK;
+  ctx.font='bold 14px system-ui,sans-serif';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  ctx.fillText('牌面图鉴', 16, SAFE_T+50);
+  ctx.fillStyle='#8a8692'; ctx.font='10px system-ui,sans-serif';
+  ctx.fillText('共 78 张 · 上下滑动查看 · 点击牌面看牌义', 16, SAFE_T+68);
+  const cr=this.galleryCloseRect();
+  drawBoxBtn('✕',cr.x,cr.y,cr.w,cr.h,{bg:PAPER,fg:INK,lw:2,font:'bold 13px system-ui,sans-serif'});
+  ctx.strokeStyle=INK; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,L.top); ctx.lineTo(W,L.top); ctx.stroke();
+
+  // 内容区（裁剪到标题区以下、底部按钮以上）
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,L.top,W,Math.max(0,vh)); ctx.clip();
+  for(const h of L.heads){
+    const yy=h.y-gy;
+    if(yy<-20||yy>L.top+vh+20) continue;
+    ctx.fillStyle=INK; ctx.font='bold 12px system-ui,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(h.t, h.x, yy);
+    ctx.strokeStyle='rgba(20,16,24,.35)'; ctx.lineWidth=1;
+    const tw=ctx.measureText(h.t).width;
+    ctx.beginPath(); ctx.moveTo(h.x+tw+8, yy+9); ctx.lineTo(W-h.x, yy+9); ctx.stroke();
+  }
+  for(const it of L.cards){
+    const cy=it.y-gy;
+    if(cy-it.h/2>L.top+vh+4 || cy+it.h/2<L.top-4) continue;
+    tarotFace(it.c, it.x, cy, 0, it.w, it.h, true);
+  }
+  ctx.restore();
+
+  // 滚动条
+  if(maxS>0){
+    const barH=Math.max(28, vh*vh/(L.height-L.top));
+    const barY=L.top+((vh-barH)*this.gsY/maxS);
+    ctx.fillStyle='rgba(20,16,24,.28)';
+    rr(W-4,barY,3,barH,2); ctx.fill();
+  }
+  // 底部提示
+  ctx.fillStyle='rgba(255,255,255,.96)';
+  ctx.fillRect(0,L.top+vh,W,H-L.top-vh);
+  ctx.fillStyle='#8a8692'; ctx.font='10px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(maxS>0?(this.gsY>0?'↑ 已上滑':'轻点上滑浏览'):'已到底部 · 共 78 张', W/2, this.btnY()+6);
+
+  if(this.gDetail) this.drawGalleryDetail(this.gDetail);
+},
+drawGalleryDetail(c){
+  ctx.fillStyle='rgba(20,16,24,.5)'; ctx.fillRect(0,0,W,H);
+  const pw=Math.min(W-28,330);
+  const cw=Math.min(pw*0.44,150), ch=cw*1.42;
+  const pad=14;
+  // 先算文字行，确定面板高度
+  const tw=pw-pad*2-8;
+  ctx.font='10px system-ui,sans-serif';
+  const descLines=wrapText(c.img, tw);
+  ctx.font='11px system-ui,sans-serif';
+  const meanLines=wrapText('【正位】'+c.upMean+'  ／  【逆位】'+c.revMean, tw);
+  const panelH=Math.min(H-40, pad*2+20+ch+16+descLines.length*14+8+meanLines.length*15+22);
+  const px=(W-pw)/2, py=Math.max(SAFE_T+12,(H-panelH)/2);
+  ctx.fillStyle=INK; ctx.fillRect(px+5,py+5,pw,panelH);
+  ctx.fillStyle=PAPER; ctx.fillRect(px,py,pw,panelH);
+  ctx.strokeStyle=INK; ctx.lineWidth=3; ctx.strokeRect(px,py,pw,panelH);
+
+  let y=py+pad;
+  ctx.fillStyle=INK; ctx.font='bold 13px system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText(c.name, W/2, y);
+  ctx.fillStyle='#6b6574'; ctx.font='10px system-ui,sans-serif';
+  ctx.fillText(c.arc==='大'?'大阿卡纳 · No.'+c.id:(c.suit+' · '+c.el), W/2, y+17);
+  y+=34;
+  tarotFace(c, W/2, y+ch/2, 0, cw, ch, true);
+  y+=ch+12;
+  ctx.fillStyle='#3d3846'; ctx.font='10px system-ui,sans-serif';
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  for(const l of descLines){
+    if(y>py+panelH-pad-46) break;
+    ctx.fillText(l, px+pad, y); y+=14;
+  }
+  y+=4;
+  ctx.fillStyle=INK; ctx.font='11px system-ui,sans-serif';
+  for(const l of meanLines){
+    if(y>py+panelH-pad-20) break;
+    ctx.fillText(l, px+pad, y); y+=15;
+  }
+  ctx.fillStyle='#8a8692'; ctx.font='9px system-ui,sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('轻点任意处返回图鉴', W/2, py+panelH-pad+2);
+},
+galleryDown(p){
+  this.gDown={x:p.x,y:p.y};
+  this.gLastY=p.y; this.gMoved=0; this.gDrag=true; this.gsV=0;
+  // 关闭按钮优先
+  const cr=this.galleryCloseRect();
+  // 关闭按钮的点击统一在 galleryUp 中处理
+},
+galleryMove(p){
+  if(!this.gDrag){ this.gLastY=p.y; return; }
+  const dy=p.y-this.gLastY; this.gLastY=p.y;
+  this.gMoved+=Math.abs(dy);
+  if(this.gMoved>4){
+    this.gsY-=dy;
+    this.gsV=-dy*0.85;
+    const L=this.galleryLayout();
+    const vh=this.btnY()-10-L.top;
+    const maxS=Math.max(0,L.height-L.top-vh);
+    if(this.gsY<0){ this.gsY=0; this.gsV=0; }
+    if(this.gsY>maxS){ this.gsY=maxS; this.gsV=0; }
+  }
+},
+galleryUp(){
+  const down=this.gDown, moved=this.gMoved;
+  this.gDrag=false; this.gDown=null;
+  if(!down || moved>8){ this.gsV*=0.9; return; }
+  const p=down;
+  const cr=this.galleryCloseRect();
+  if(p.x>cr.x&&p.x<cr.x+cr.w&&p.y>cr.y&&p.y<cr.y+cr.h){ this.closeGallery(); return; }
+  if(this.gDetail){ this.gDetail=null; return; }        // 详情页：轻点任意处返回图鉴
+  if(p.y<this.galleryTop()+8) return;
+  const L=this.galleryLayout(), gy=this.gsY;
+  for(const it of L.cards){
+    const cy=it.y-gy;
+    if(p.x>it.x-it.w/2&&p.x<it.x+it.w/2&&p.y>cy-it.h/2&&p.y<cy+it.h/2){
+      this.gDetail=it.c; return;
+    }
+  }
+},
 frame(){
   const S=this.S;
+  if(this.state===S.GALLERY){ this.drawGallery(); return; }
   if(this.state===S.SHUFFLE){
     this.shuffleT++;
     const n=48,dur=44;
     const e=easeOut(clamp(this.shuffleT/dur,0,1));
+    const SX=centerX(), SY=H*0.42;
     for(let i=0;i<n;i++){
       const a=i*2.399963, r0=Math.max(W,H)*0.5;
-      const sx=centerX()+Math.cos(a)*r0, sy=H*0.42+Math.sin(a)*r0;
-      const tx=centerX()+Math.cos(a+i)*W*0.1, ty=H*0.42+Math.sin(a*1.7)*H*0.06;
-      const jx=Math.sin(this.shuffleT*0.3+i)*9*(1-clamp(this.shuffleT/dur,0,1));
-      drawBack(sx+(tx-sx)*e+jx, sy+(ty-sy)*e+jx, Math.sin(this.shuffleT*0.2+i)*0.4*(1-clamp(this.shuffleT/dur,0,1)), this.CW*0.72, this.CH*0.72,1);
+      const sx=centerX()+Math.cos(a)*r0, sy=SY+Math.sin(a)*r0;
+      // 收尾：所有牌收拢到同一个中心点，叠成整齐一叠（牌轮从此处展开）
+      const tx=SX+(i%7-3)*0.9, ty=SY+Math.floor(i/7)*1.0-14;
+      const jx=Math.sin(this.shuffleT*0.3+i)*9*(1-e);
+      drawBack(sx+(tx-sx)*e+jx, sy+(ty-sy)*e+jx, Math.sin(this.shuffleT*0.2+i)*0.4*(1-e), this.CW*0.72, this.CH*0.72,1);
+    }
+    // 收拢完成时中心轻轻一压，作为牌轮展开的“蓄力”信号
+    if(this.shuffleT>dur-12){
+      const k=clamp((this.shuffleT-(dur-12))/12,0,1);
+      ctx.save(); ctx.globalAlpha=k*0.5;
+      ctx.fillStyle=GOLD;
+      rr(SX-this.CW*0.46,SY-this.CH*0.52,this.CW*0.92,this.CH*0.92,4); ctx.restore();
     }
     if(this.shuffleT>=dur){ this.wheelDeck=this.buildDeck(); startWheelPick(); this.state=S.WHEEL; this.animT=0; this.syncHud(); }
   }
@@ -1755,15 +2059,18 @@ TPL.forEach(t=>{const s=document.createElement('span');s.textContent=t;
   s.onclick=()=>{ask.input.value=t+'：';};tplBox.appendChild(s);});
 document.getElementById('qOk').onclick=()=>ask.ok();
 document.getElementById('qSkip').onclick=()=>ask.skip();
+document.getElementById('qDex').onclick=()=>{ if(cur===Tarot) Tarot.openGallery(); };
 ask.input.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('qOk').click();});
 
 const GOLD='#d8a32a';
-const WHEEL={active:false,cx:0,cy:0,R:0,CW:0,CH:0,ang:0,omega:0,prog:0,need:10,acc:0,decayAcc:0,down:false,hot:-1,hotT:0,selT:0,flash:0,selX:null,selY:null,particles:[],remain:78,gone:[]};
+const WHEEL={active:false,cx:0,cy:0,R:0,CW:0,CH:0,ang:0,omega:0,prog:0,need:10,acc:0,decayAcc:0,down:false,hot:-1,hotT:0,selT:0,flash:0,selX:null,selY:null,particles:[],remain:78,gone:[],
+introT:999,introDur:72,sx:0,sy:0};
 const WHEEL_N=78, WHEEL_OMEGA=0.28, WHEEL_PER=Math.PI*2/WHEEL_N, WHEEL_HOLD=0.45, WHEEL_DECAY=0.5;
 const WHEEL_BASE=0.16;          // 基础角速度（未触碰牌时）
 const WHEEL_MAX=0.62;           // 滑过牌时可加速到的角速度上限
 const WHEEL_SLOW=0.07;          // 选中一张牌后的慢速角速度
-function wheelReset(){ WHEEL.active=false; WHEEL.down=false; WHEEL.hot=-1; WHEEL.prog=0; WHEEL.acc=0; WHEEL.decayAcc=0; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0; }
+function wheelReset(){ WHEEL.active=false; WHEEL.down=false; WHEEL.hot=-1; WHEEL.prog=0; WHEEL.acc=0; WHEEL.decayAcc=0; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0;
+  WHEEL.introT=WHEEL.introDur; }
 function startWheelPick(){
   const W_=window.innerWidth, H_=window.innerHeight;
   WHEEL.active=true;
@@ -1771,12 +2078,22 @@ function startWheelPick(){
   WHEEL.R=H_*0.38;
   WHEEL.cx=W+WHEEL.R*0.55; WHEEL.cy=H*0.5;   // 半径缩小、圆心相应右移 → 牌弧仍居中
   WHEEL.CW=clamp(Math.min(H_*0.085, W_*0.14), 30, 62); WHEEL.CH=WHEEL.CW*1.44;
-  WHEEL.ang=Math.random()*Math.PI*2; WHEEL.omega=WHEEL_OMEGA;
+  WHEEL.ang=-2.25; WHEEL.omega=WHEEL_OMEGA;
   WHEEL.prog=0; WHEEL.acc=0; WHEEL.hot=-1; WHEEL.hotT=0; WHEEL.down=false;
   WHEEL.particles=[]; WHEEL.remain=WHEEL_N; WHEEL.gone=[]; WHEEL.selT=0; WHEEL.flash=0; WHEEL.selX=null; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0;
+  // 入场动画：中心牌叠先被慢速抛向上方，随后牌轮高速旋转接牌
+  WHEEL.sx=centerX(); WHEEL.sy=H*0.42;
+  WHEEL.thE=-2.25;      // 牌落入牌轮的入口角度（牌轮右上方的弧顶）
+  WHEEL.dAng=0.033088;  // 入场期间每帧转角（2.0 rad/s，明显快于平时 0.16）
+  WHEEL.omegaF=WHEEL.dAng*60;
+  WHEEL.entT0=28;       // 上抛结束、第一张牌开始落入的帧
+  WHEEL.landT=68;       // 高速旋转接牌的帧数（约 1.1 秒转 2.25 弧度，刚好铺满可见弧）
+  WHEEL.introT=0; WHEEL.introDur=WHEEL.entT0+WHEEL.landT;
+  WHEEL.decel=false;
 }
 function wheelIndexAt(x,y){
   if(!WHEEL.active) return -1;
+  if(WHEEL.introT<WHEEL.introDur) return -1;      // 展开动画进行中，暂不接受选牌
   const dx=x-WHEEL.cx, dy=y-WHEEL.cy;
   if(dx > 0) return -1;                        // 圆心在右侧屏外，只响应左侧半圆弧（正C）
   if(dx*dx+dy*dy > (WHEEL.R+WHEEL.CW*2.2)*(WHEEL.R+WHEEL.CW*2.2)) return -1;
@@ -1793,6 +2110,23 @@ function wheelIndexAt(x,y){
 }
 function wheelTick(dt){
   if(!WHEEL.active) return;
+  if(WHEEL.introT<WHEEL.introDur){
+    // 入场：上抛阶段牌轮不动，随后以高速接牌
+    WHEEL.introT+=1;
+    if(WHEEL.introT>=WHEEL.entT0){
+      WHEEL.omega=WHEEL.omegaF;
+      WHEEL.ang-=WHEEL.dAng;          // 每帧固定转角，保证每张牌准点落到自己的位置
+    }else WHEEL.omega=0;
+    if(WHEEL.introT>=WHEEL.introDur) WHEEL.decel=true;
+    return;
+  }
+  if(WHEEL.decel){
+    // 所有牌落位后，由高速平滑减速回正常转速
+    WHEEL.omega+=(WHEEL_BASE-WHEEL.omega)*0.07;
+    if(Math.abs(WHEEL.omega-WHEEL_BASE)<0.004){ WHEEL.omega=WHEEL_BASE; WHEEL.decel=false; }
+    WHEEL.ang-=WHEEL.omega*dt;
+    return;
+  }
   // 角速度随交互变化：碰到牌逐渐加快，选中后放慢
   const touching=(WHEEL.down && WHEEL.hot>=0 && !WHEEL.gone.includes(WHEEL.hot));
   const target=(WHEEL.selT>0.5)? WHEEL_SLOW : (touching? WHEEL_MAX : WHEEL_BASE);
@@ -1866,9 +2200,14 @@ function wheelGoldOverlay(x,y,w,h,rot,t){       // 金色覆盖版卡背（翘�
 function drawWheel(){
   const a=WHEEL.ang, N=WHEEL_N, per=WHEEL_PER, R=WHEEL.R, cw=WHEEL.CW, ch=WHEEL.CH;
   const cx=WHEEL.cx, cy=WHEEL.cy;
-  // 左侧竖向进度条
+  const intro=clamp(WHEEL.introT/WHEEL.introDur,0,1);
+  const ie=easeOut(intro);
+  const uiA=clamp((intro-0.5)/0.5,0,1);            // 进度条/文字随展开完成度淡入
+  // 左侧竖向进度条（从屏幕左缘滑入）
   const bx=Math.max(12, W*0.045), by=H*0.16, bw=clamp(W*0.045,12,18), bh=H*0.56;
   ctx.save();
+  ctx.globalAlpha=uiA;
+  ctx.translate(-(1-ie)*(bw+26),0);
   ctx.fillStyle='#eceaf2'; rr(bx,by,bw,bh,4); ctx.fill();
   const h=bh*WHEEL.prog/WHEEL.need;
   if(h>0){ ctx.fillStyle=GOLD; rr(bx,by+bh-h,bw,h,3); ctx.fill(); }
@@ -1884,6 +2223,24 @@ function drawWheel(){
   ctx.fillStyle='#8a8692';
   ctx.fillText('按住牌面 · 滑过加格', bx-2, by+bh+8);
   ctx.restore();
+
+  // ===== 入场：中心牌叠慢速上抛，随后牌轮高速旋转，牌从盘顶逐张落下 =====
+  const t=WHEEL.introT;
+  if(t<WHEEL.entT0+12){
+    // 1) 中心那一叠旋转着飞向屏幕上方（放慢，给第一张牌留出起步时间）
+    const k=Math.pow(clamp(t/(WHEEL.entT0+2),0,1),2.2);
+    const fx=WHEEL.sx+(W*0.86-WHEEL.sx)*k;
+    const fy=WHEEL.sy+(-ch*1.5-WHEEL.sy)*k;
+    const a2=clamp(1-Math.max(0,t-(WHEEL.entT0+2))/10,0,1);
+    if(a2>0){
+      ctx.save(); ctx.globalAlpha=a2*0.95;
+      for(let j=7;j>=0;j--){
+        drawBack(fx-j*1.3, fy+j*3.2, k*0.3+j*0.04, cw*0.72, ch*0.72, 1);
+      }
+      ctx.restore();
+    }
+  }
+
   // 牌轮：只画右半圆（cos>0），从后往前画
   const order=[];
   for(let i=0;i<N;i++){
@@ -1893,14 +2250,32 @@ function drawWheel(){
   order.sort((p,q)=>q.c-p.c);
   for(const o of order){
     if(WHEEL.gone.includes(o.i)) continue;
-    const px=cx+Math.cos(o.ang)*R, py=cy+Math.sin(o.ang)*R;
-    if(px< -cw || px>W+cw || py< -ch || py>H+ch) continue;   // 跳过屏外的牌
-    const lift=(o.i===WHEEL.hot)?WHEEL.hotT:0;
-    const rot=0;   // 统一朝向：所有牌一个方向叠着，不再随圆周旋转
+    let px=cx+Math.cos(o.ang)*R, py=cy+Math.sin(o.ang)*R;
+    let sc=1, al=0.9, rot=0;                        // 统一朝向：所有牌一个方向叠着
+    if(intro<1){
+      const tNow=WHEEL.introT;
+      // 每张牌“转到盘顶入口”的时刻：i 越大越晚，正好一张接一张
+      const tEnt=WHEEL.entT0+o.i*(per/WHEEL.dAng);
+      if(tNow<tEnt){
+        // 还没轮到这张牌：先隐藏；到入场尾声再整体轻轻淡入，从弧的上下边缘滑进画面
+        const f=clamp((tNow-(WHEEL.introDur-16))/16,0,1);
+        if(f<=0) continue;
+        al=0.9*f;
+      }else{
+        // 轮到这张牌：从盘顶上方落下，落定后随高速牌轮一起转到自己的位置
+        const e=easeOut(clamp((tNow-tEnt)/7,0,1));
+        py-=(1-e)*ch*1.25;
+        sc=0.86+0.14*e;
+        al=0.9*e;
+        rot=(1-e)*0.35;
+      }
+    }
+    if(px< -cw*1.5 || px>W+cw*1.5 || py< -ch*1.5 || py>H+ch*1.5) continue;
+    const lift=(o.i===WHEEL.hot && intro>=1)?WHEEL.hotT:0;
     if(lift>0){
       ctx.save(); ctx.translate(px,py-ch*0.10*lift); ctx.rotate(rot*0.5);
-      const sc=1+0.14*lift;
-      ctx.scale(sc,sc);
+      const gsc=1+0.14*lift;
+      ctx.scale(gsc,gsc);
       ctx.globalAlpha=0.35*lift; ctx.fillStyle=GOLD;
       rr(-cw*0.7,-ch*0.7,cw*1.4,ch*1.4,6); ctx.fill();
       ctx.globalAlpha=1;
@@ -1908,9 +2283,12 @@ function drawWheel(){
       ctx.strokeStyle=GOLD; ctx.lineWidth=2.2;
       rr(-cw/2-3,-ch/2-3,cw+6,ch+6,4); ctx.stroke();
       ctx.restore();
+    }else if(sc!==1||al!==0.9||rot!==0){
+      ctx.save(); ctx.translate(px,py); ctx.scale(sc,sc); ctx.rotate(rot);
+      ctx.globalAlpha=al; drawBack(0,0,0,cw,ch,1); ctx.restore();
     }else{
       ctx.save(); ctx.globalAlpha=0.9;
-      drawBack(px,py,rot,cw,ch,1); ctx.restore();
+      drawBack(px,py,0,cw,ch,1); ctx.restore();
     }
   }
   if(WHEEL.selT>0 && WHEEL.selX!=null){
@@ -1964,10 +2342,13 @@ function drawWheel(){
   }
   // 圆心菱形（圆心在屏外，这里不显示，仅保留旋转枢轴）
   if(cx > -cw && cx < W+cw && cy > -ch && cy < H+ch) diamond(cx,cy,Math.max(5,cw*0.16));
+  ctx.save();
+  ctx.globalAlpha=clamp((WHEEL.introT/WHEEL.introDur-0.4)/0.6,0,1);
   ctx.fillStyle='#6b6574'; ctx.font='10px system-ui,sans-serif';
   ctx.textAlign='center'; ctx.textBaseline='top';
   ctx.fillText('剩余 '+WHEEL.remain+' 张', W/2, H*0.10+16);
   ctx.fillText('已选 '+Tarot.pickedCards.length+' / 3', W/2, H*0.10);
+  ctx.restore();
 }
 
 let cur=null, mode=null;
@@ -2058,17 +2439,23 @@ function pos(e){const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0
 let lastY=0;
 function onDown(e){ if(!cur || ask.el.style.display==='flex') return;
   const p=pos(e); lastY=p.y;
-  if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){ WHEEL.hot=wheelIndexAt(p.x,p.y); if(WHEEL.hot>=0)WHEEL.hotT=1; WHEEL.down=true; }
+  if(cur===Tarot && Tarot.state===Tarot.S.GALLERY){ Tarot.galleryDown(p); return; }
+  if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){
+    if(WHEEL.introT<WHEEL.introDur) return;          // 展开动画未结束，忽略操作
+    WHEEL.hot=wheelIndexAt(p.x,p.y); if(WHEEL.hot>=0)WHEEL.hotT=1; WHEEL.down=true; }
   else cur.tap(p);
   syncUI(); }
 function onMove(e){ if(!cur) return;
   const p=pos(e);
+  if(cur===Tarot && Tarot.state===Tarot.S.GALLERY){ Tarot.galleryMove(p); lastY=p.y; return; }
   if(cur===Pixel) cur.move(p.x,p.y);
   else if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){ WHEEL.hot=wheelIndexAt(p.x,p.y); if(WHEEL.hot>=0){ WHEEL.hotT=1; if(WHEEL.down && WHEEL.hot!==WHEEL.lastHot){ WHEEL.lastHot=WHEEL.hot; WHEEL.acc=0; WHEEL.prog=Math.min(WHEEL.need,WHEEL.prog+1);} } }
   else cur.move(p.y-lastY);
   lastY=p.y; }
-function onUp(){ if(cur===Pixel) Pixel.up(); else if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){ WHEEL.down=false; WHEEL.hot=-1; WHEEL.lastHot=-1; WHEEL.acc=0; } }
+function onUp(){ if(cur===Tarot && Tarot.state===Tarot.S.GALLERY){ Tarot.galleryUp(); return; }
+  if(cur===Pixel) Pixel.up(); else if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){ WHEEL.down=false; WHEEL.hot=-1; WHEEL.lastHot=-1; WHEEL.acc=0; } }
 cv.addEventListener('mousedown',onDown);
+cv.addEventListener('mousemove',onMove);
 cv.addEventListener('touchstart',e=>{e.preventDefault();onDown(e);},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
 document.addEventListener('mouseup',onUp);
