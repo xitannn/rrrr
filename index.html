@@ -2949,8 +2949,8 @@ function startWheelPick(){
   const W_=window.innerWidth, H_=window.innerHeight;
   WHEEL.active=true;
   // 圆心移到屏幕正左方，牌弧（上半弧+下半弧）正对屏幕中央
-  WHEEL.R=H_*0.38;
-  WHEEL.cx=W+WHEEL.R*0.55; WHEEL.cy=H*0.5;   // 半径缩小、圆心相应右移 → 牌弧仍居中
+  WHEEL.R=H_*0.30;                          // 半径缩小：同一段可见弧的弯曲更明显（弧度更大）
+  WHEEL.cx=W_*0.64+WHEEL.R; WHEEL.cy=H*0.5;  // 圆心右移，使弧的最左点仍落在屏幕左侧约 0.64W 处
   WHEEL.CW=clamp(Math.min(H_*0.085, W_*0.14), 30, 62); WHEEL.CH=WHEEL.CW*1.44;
   WHEEL.ang=-2.25; WHEEL.omega=WHEEL_OMEGA;
   WHEEL.prog=0; WHEEL.acc=0; WHEEL.hot=-1; WHEEL.hotT=0; WHEEL.down=false;
@@ -3170,13 +3170,14 @@ function drawWheel(){
     }
   }
 
-  // 牌轮：只画右半圆（cos>0），从后往前画
-  const order=[];
+  // 牌轮：只画屏幕弧内的牌；叠放顺序按"竖直位置"固定为：弧顶那张压在最底下，弧底那张压在最上面
+  // （这样相邻两张永远不会突然换前后，旋转时不会出现"后面一张闪到前面"的跳变）
+  const order=[], lifted=[];
   for(let i=0;i<N;i++){
     const ang=a+i*per, c=Math.cos(ang);
     if(c<=0) order.push({i:i,ang:ang,c:c});
   }
-  order.sort((p,q)=>q.c-p.c);
+  order.sort((p,q)=>Math.sin(p.ang)-Math.sin(q.ang));
   for(const o of order){
     if(WHEEL.gone.includes(o.i)) continue;
     let px=cx+Math.cos(o.ang)*R, py=cy+Math.sin(o.ang)*R;
@@ -3200,7 +3201,10 @@ function drawWheel(){
         rot=(1-e)*0.35;
       }
     }
-    if(px< -cw*1.5 || px>W+cw*1.5 || py< -ch*1.5 || py>H+ch*1.5) continue;
+    // 屏幕外剔除：只画落在可视区域的牌（留出倾斜 ±0.17rad 与 1.14 倍放大的余量）
+    const hw=cw*0.5+6, hh=ch*0.5+6, pad=hh*0.45;
+    if(px+hw+pad<0 || px-hw-pad>W || py+hh+pad<0 || py-hh-pad>H) continue;
+    if(al<=0.02) continue;
     // 三张选完后：其余牌按离选中点的远近先后炸开、消散
     if(WHEEL.shOn){
       const d=Math.min(1.10, Math.hypot(px-WHEEL.shX, py-WHEEL.shY)/560);   // 越近越先碎（秒）
@@ -3217,22 +3221,9 @@ function drawWheel(){
       }
     }
     const lift=(o.i===WHEEL.hot && intro>=1)?WHEEL.hotT:0;
+    if(lift>0){ lifted.push({px:px,py:py,rot:rot,tilt:tilt,lift:lift}); }   // 被碰到的牌最后单独画，保证压在最上层
     if(lift>0){
-      // 被触碰：以牌底为支点左右歪一下（不是前后翻转，也不放大）
-      const ta=0.17*Math.max(tilt,0.001);
-      ctx.save();
-      ctx.translate(px, py+ch*0.42); ctx.rotate(rot*0.5 + ta); ctx.translate(0, -ch*0.42 - ch*0.02*lift);
-      const gsc=1+0.14*lift;
-      ctx.scale(gsc,gsc);
-      ctx.globalAlpha=0.35*lift; ctx.fillStyle=FXC();
-      rr(-cw*0.7,-ch*0.7,cw*1.4,ch*1.4,6); ctx.fill();
-      ctx.globalAlpha=1;
-      paintBack(ctx,0,0,0,cw,ch,1,SKIN);          // 触碰/选中的牌仍显示牌背（跟随当前皮肤）
-      ctx.globalAlpha=0.14*lift; ctx.fillStyle=FXC(); rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
-      ctx.globalAlpha=1;
-      ctx.strokeStyle=FXC(); ctx.lineWidth=2.2;
-      rr(-cw/2-3,-ch/2-3,cw+6,ch+6,4); ctx.stroke();
-      ctx.restore();
+      /* 被触碰牌的绘制延后到循环之后（见下方 lifted 绘制） */
     }else if(sc!==1||al!==0.9||rot>0.002||tilt>0.002){
       ctx.save();
       if(tilt>0.002){ ctx.translate(px, py+ch*0.42); ctx.rotate(rot*0.5 + 0.17*tilt); ctx.translate(0,-ch*0.42); }
@@ -3240,9 +3231,25 @@ function drawWheel(){
       if(sc!==1) ctx.scale(sc,sc);
       ctx.globalAlpha=al; drawBack(0,0,0,cw,ch,1); ctx.restore();
     }else{
-      ctx.save(); ctx.globalAlpha=0.9;
-      drawBack(px,py,0,cw,ch,1); ctx.restore();
+      ctx.globalAlpha=0.9; drawBack(px,py,0,cw,ch,1); ctx.globalAlpha=1;
     }
+  }
+  // 被触碰的牌：统一在最后画，永远压在这堆牌的最上面
+  for(const it of lifted){
+    const ta=0.17*Math.max(it.tilt,0.001);
+    ctx.save();
+    ctx.translate(it.px, it.py+ch*0.42); ctx.rotate(it.rot*0.5 + ta); ctx.translate(0, -ch*0.42 - ch*0.02*it.lift);
+    const gsc=1+0.14*it.lift;
+    ctx.scale(gsc,gsc);
+    ctx.globalAlpha=0.35*it.lift; ctx.fillStyle=FXC();
+    rr(-cw*0.7,-ch*0.7,cw*1.4,ch*1.4,6); ctx.fill();
+    ctx.globalAlpha=1;
+    paintBack(ctx,0,0,0,cw,ch,1,SKIN);
+    ctx.globalAlpha=0.14*it.lift; ctx.fillStyle=FXC(); rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
+    ctx.globalAlpha=1;
+    ctx.strokeStyle=FXC(); ctx.lineWidth=2.2;
+    rr(-cw/2-3,-ch/2-3,cw+6,ch+6,4); ctx.stroke();
+    ctx.restore();
   }
   // 碎裂后的碎片
   if(WHEEL.shards.length){
