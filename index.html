@@ -299,7 +299,8 @@ let BACK_IMG=null;
   } }catch(e){}
 }; im.src=BACK_SRC; })();
 // ---- 卡背皮肤：0=原点阵 1=古典蔓草 ----
-let SKIN=1;
+let SKIN=1;          // 塔罗模式牌背皮肤
+const PSKIN=0;       // 连抽模式牌背（像素点阵，独立于塔罗皮肤设置）
 try{ const v=localStorage.getItem('tarotBackSkin'); if(v==='0'||v==='1') SKIN=parseInt(v,10); }catch(e){}
 function pgrr(g,x,y,w,h,r){
   g.beginPath(); g.moveTo(x+r,y); g.lineTo(x+w-r,y);
@@ -348,8 +349,8 @@ function prewarmBacks(){
     const fc=FINALE_CW(); backSprite(fc, fc*1.42, SKIN, 1);
   }catch(e){}
 }
-function drawBack(x,y,rot,w,h,shadow){
-  const o=backSprite(w,h,SKIN,shadow);
+function drawBack(x,y,rot,w,h,shadow,skin){
+  const o=backSprite(w,h,skin==null?SKIN:skin,shadow);
   if(!rot){ ctx.drawImage(o.cv, x-o.w/2, y-o.h/2, o.w, o.h); return; }
   ctx.save(); ctx.translate(x,y); ctx.rotate(rot);
   ctx.drawImage(o.cv, -o.w/2, -o.h/2, o.w, o.h);
@@ -2178,8 +2179,10 @@ reset(){ this.stopAutoDeal(); this.start(); },
 floorY(){ return H-10-this.CH/2; },
 pilePos(i){
   const gap=Math.min(this.CW*1.5, W/(PILE_N+1.2));
-  return {x:centerX()+(i-(PILE_N-1)/2)*gap, y:H*0.13+(i%2)*3, rot:(i-(PILE_N-1)/2)*0.05};
+  return {x:centerX()+(i-(PILE_N-1)/2)*gap, y:H*0.19+(i%2)*3, rot:(i-(PILE_N-1)/2)*0.05};
 },
+pileStepY(){ return Math.max(2.2,Math.min(4,H*0.005)); },
+pileLayers(n){ return Math.min(n||0, 13); },   // 每叠最多显示 13 层，避免顶出屏幕
 buildDeckOrdered(){
   const compose=[34,25,20,15,5,1], arr=[];
   for(let r=0;r<compose.length;r++) for(let k=0;k<compose[r];k++) arr.push(r);
@@ -2199,15 +2202,20 @@ pileRemain(){ return this.piles.reduce((a,p)=>a+p.length,0); },
 pickRarity(){ let r=Math.random(),acc=0;
   for(let i=0;i<6;i++){acc+=[0.34,0.25,0.20,0.15,0.05,0.01][i]; if(r<acc) return i;}
   return 0; },
+dealSourcePos(){                              // 发牌点：就是手指位置
+  if(this.pointerDown) return {x:this.dealX, y:Math.min(this.dealY, H*0.86)};
+  return {x:centerX(), y:H*0.4};
+},
 dealCardAt(px,py){
   if(this.dealCount>=DECK_SIZE) return;
   this.dealCount++;
   const rar=this.dealBag.length?this.dealBag[this.dealBag.length-1-this.dealCount]:this.pickRarity();
+  const src=this.dealSourcePos();
   this.deck.push({rar:rar,
-    x:Math.max(this.CW/2,Math.min(W-this.CW/2,px)),
-    y:Math.max(-this.CH,Math.min(H*0.6,py)),
-    rot:(Math.random()-.5)*0.6,
-    vx:(Math.random()-.5)*3, vy:1+Math.random()*2, vr:(Math.random()-.5)*0.14,
+    x:Math.max(this.CW/2,Math.min(W-this.CW/2,src.x+(Math.random()-.5)*this.CW*1.1)),
+    y:src.y+(Math.random()-.5)*this.CH*0.35,
+    rot:(Math.random()-.5)*0.5,
+    vx:(Math.random()-.5)*3.4, vy:0.6+Math.random()*1.8, vr:(Math.random()-.5)*0.12,
     landed:false,bounces:0,sx:null});
   document.getElementById('deckV').textContent=DECK_SIZE-this.dealCount;
   if(this.dealCount>=DECK_SIZE) this.stopAutoDeal();
@@ -2227,8 +2235,8 @@ beginAutoDeal(x,y){
   const interval=Math.max(16,Math.round(DEAL_MS/DECK_SIZE));
   this.dealTimer=setInterval(()=>{
     if(cur!==this || this.state!==this.S.DEAL || this.dealCount>=DECK_SIZE || !this.pointerDown){ this.stopAutoDeal(); return; }
-    const t=this.nextDealSlot();
-    this.dealCardAt(this.dealX+(Math.random()-.5)*this.CW*.8, Math.min(this.dealY,H*.55)-t*H*.1);
+    this.nextDealSlot();
+    this.dealCardAt(this.dealX, this.dealY);
   },interval);
   this.tip='按住连发 · 滑动屏幕也能发牌（3 秒内发完 '+DECK_SIZE+' 张）';
 },
@@ -2265,6 +2273,7 @@ startShuffle(){
       x:centerX()+(Math.random()-.5)*W*.8, y:H*.42+(Math.random()-.5)*H*.6,
       rot:(Math.random()-.5)*.5, vx:(Math.random()-.5)*7, vy:(Math.random()-.5)*7,
       landed:false,bounces:0,sx:null};
+    c.ph=i%PILE_N; c.pl=Math.floor(i/PILE_N);   // 目标牌堆 / 在该堆里的层号（洗牌落位用）
     this.deck.push(c);
   }
   this.fan=[];this.picked=null;this.revealed=false;this.sideCards=[];this.piles=[];
@@ -2456,37 +2465,58 @@ frame(){
     }
   }
   if(this.state===S.IDLE) this.drawDealt();
+  // DEAL 状态：每张牌直接在手指处生成后散落（不画牌堆）
 
   if(this.state===S.SHUFFLE){
+    // 三段连贯动画：①四散牌收拢到中央 ②从中央依次飞落到 5 叠 ③无缝交接给牌堆
     this.shuffleT++;
-    const k=Math.max(0,1-this.shuffleT/46);
-    for(let i=0;i<this.deck.length;i++){
-      const c=this.deck[i];
-      const jx=Math.sin(this.shuffleT*0.21+i*0.7), jy=Math.cos(this.shuffleT*0.17+i*0.9);
-      c.vx+=(centerX()-c.x)*0.035+jx*1.2;
-      c.vy+=(H*0.42-c.y)*0.035+jy*1.2;
-      c.vx*=0.86;c.vy*=0.86;c.x+=c.vx;c.y+=c.vy;
-      c.rot+=(Math.random()-.5)*0.2*k;
-      const off=(i-this.deck.length/2)*0.5;
-      this.drawCardFace(c.x+off,c.y+off*0.4,c.rot,this.CW,this.CH,null,1);
+    const T1=26, T2=46;                       // 收拢帧数 / 落堆帧数
+    const stepY=this.pileStepY();
+    const k=Math.max(0,1-this.shuffleT/T1);
+    if(this.shuffleT<=T1){
+      for(let i=0;i<this.deck.length;i++){
+        const c=this.deck[i];
+        const jx=Math.sin(this.shuffleT*0.21+i*0.7), jy=Math.cos(this.shuffleT*0.17+i*0.9);
+        c.vx+=(centerX()-c.x)*0.035+jx*1.2;
+        c.vy+=(H*0.42-c.y)*0.035+jy*1.2;
+        c.vx*=0.86;c.vy*=0.86;c.x+=c.vx;c.y+=c.vy;
+        c.rot+=(Math.random()-.5)*0.2*k;
+        const off=(i-this.deck.length/2)*0.5;
+        this.drawCardFace(c.x+off,c.y+off*0.4,c.rot,this.CW,this.CH,null,1);
+      }
+      if(this.shuffleT===T1){                 // 记下落堆起点
+        for(let i=0;i<this.deck.length;i++){ const c=this.deck[i]; c.sx=c.x; c.sy=c.y; c.sr=c.rot; }
+      }
+    }else{
+      const s2=clamp((this.shuffleT-T1)/T2,0,1);
+      // 数组顺序即层号递增，天然满足"底层的牌先画、上层的牌压在上面"
+      for(let i=0;i<this.deck.length;i++){
+        const c=this.deck[i];
+        const pos=this.pilePos(c.ph);
+        const st=Math.min(0.5, c.pl*0.03);                 // 层号越大越晚落：牌堆自下而上长起来
+        const e=easeOut(clamp((s2-st)/(1-st),0,1));
+        const tx=pos.x+(c.pl%2)*0.6, ty=pos.y-this.pileLayers(c.pl+1)*stepY, tr=pos.rot;
+        const x=c.sx+(tx-c.sx)*e, y=c.sy+(ty-c.sy)*e - Math.sin(e*Math.PI)*10;
+        this.drawCardFace(x,y,c.sr+(tr-c.sr)*e,this.CW,this.CH,null,1);
+      }
     }
-    if(this.shuffleT>48){
+    if(this.shuffleT>=T1+T2+2){
       this.buildPiles(); this.deck=[];
       this.state=S.IDLE; this.armShuffleButton();
       this.tip='';
     }
   }
   if(this.piles.length && this.state!==S.DEAL && this.state!==S.SHUFFLE){
-    const stepY=Math.max(2.2,Math.min(5,H*0.006));
+    const stepY=this.pileStepY();
     for(let p=0;p<this.piles.length;p++){
-      const arr=this.piles[p]||[], n=Math.min(arr.length,PILE_SIZE), pos=this.pilePos(p);
+      const arr=this.piles[p]||[], n=this.pileLayers(arr.length), pos=this.pilePos(p);
       for(let k=0;k<n;k++){
-        drawBack(pos.x+(k%2)*0.6, pos.y-k*stepY, pos.rot, this.CW,this.CH, k>6?0:1);
+        drawBack(pos.x+(k%2)*0.6, pos.y-k*stepY, pos.rot, this.CW,this.CH, k>6?0:1, PSKIN);
       }
       if(arr.length){
         ctx.fillStyle=INK;ctx.font='bold 10px system-ui,sans-serif';
-        ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(arr.length,pos.x+this.CW*0.6,pos.y+this.CH*0.55-n*stepY);
+        ctx.textAlign='center';ctx.textBaseline='top';
+        ctx.fillText(arr.length, pos.x, pos.y+this.CH*0.52+7);
       }
     }
   }
@@ -2932,7 +2962,7 @@ faceTiles().forEach(el=>{
 document.getElementById('skinClose').onclick=()=>{ skinPanel.style.display='none'; };
 ask.input.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('qOk').click();});
 
-const WHEEL={active:false,cx:0,cy:0,R:0,CW:0,CH:0,ang:0,omega:0,prog:0,need:10,acc:0,decayAcc:0,down:false,hot:-1,hotT:0,selT:0,flash:0,selX:null,selY:null,particles:[],remain:78,gone:[],tilts:{},px:null,py:null,shOn:false,shT:0,shX:0,shY:0,shFired:{},shards:[],
+const WHEEL={active:false,cx:0,cy:0,R:0,CW:0,CH:0,ang:0,omega:0,prog:0,need:10,acc:0,decayAcc:0,down:false,hot:-1,hotT:0,selT:0,flash:0,hover:false,hx:0,hy:0,sparks:[],burstCard:-1,selX:null,selY:null,particles:[],remain:78,gone:[],tilts:{},px:null,py:null,shOn:false,shT:0,shX:0,shY:0,shFired:{},shards:[],
 introT:999,introDur:72,sx:0,sy:0};
 const WHEEL_N=78, WHEEL_OMEGA=0.28, WHEEL_PER=Math.PI*2/WHEEL_N, WHEEL_HOLD=0.45, WHEEL_DECAY=0.5;
 const WHEEL_BASE=0.16;          // 基础角速度（未触碰牌时）
@@ -2942,7 +2972,7 @@ const WHEEL_HOLDSPD=0.028;   // 备用：按住时的低速
 const WHEEL_RUSHA=0.52;      // 按住牌轮时的角加速度（rad/s²）：越按越快（约 2.4 秒到顶速）
 const WHEEL_RUSHMAX=1.30;    // 按住加速的角速度上限
 const WHEEL_SLOW=0.07;          // 选中一张牌后的慢速角速度
-function wheelReset(){ WHEEL.active=false; WHEEL.down=false; WHEEL.hot=-1; WHEEL.prog=0; WHEEL.acc=0; WHEEL.decayAcc=0; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0;
+function wheelReset(){ WHEEL.active=false; WHEEL.down=false; WHEEL.hot=-1; WHEEL.hover=false; WHEEL.sparks.length=0; WHEEL.burstCard=-1; WHEEL.prog=0; WHEEL.acc=0; WHEEL.decayAcc=0; WHEEL.omega=WHEEL_BASE; WHEEL.speedT=0;
   WHEEL.introT=WHEEL.introDur; }
 function startWheelPick(){
   prewarmBacks();
@@ -3010,13 +3040,29 @@ function updateTilts(dt){
   }
   if(WHEEL.hot>=0 && m[WHEEL.hot]===undefined) m[WHEEL.hot]=0;
 }
+// 鼠标悬停（不按下）：指针底下的牌持续保持"被选中"的动画（跟随牌轮旋转实时判定）
+function wheelHoverTick(){
+  if(!WHEEL.active || WHEEL.down || !WHEEL.hover) return;
+  const h=wheelIndexAt(WHEEL.hx, WHEEL.hy);
+  if(h!==WHEEL.hot){ WHEEL.hot=h; WHEEL.lastHot=h; }
+  if(h>=0) WHEEL.hotT=1;          // 悬停期间高亮不衰减，离手才回正
+}
 function wheelTick(dt){
   if(!WHEEL.active) return;
   if(WHEEL.shOn){
     WHEEL.shT+=dt; updateShards(dt);
     WHEEL.omega*=0.982;                          // 碎裂期间牌轮缓缓停下
   }
+  wheelHoverTick();
   updateTilts(dt);
+  if(WHEEL.sparks.length){
+    const A=WHEEL.sparks;
+    for(let i=A.length-1;i>=0;i--){
+      const p=A[i];
+      p.x+=p.vx*dt*60; p.y+=p.vy*dt*60; p.vy+=0.055; p.vx*=0.965; p.vy*=0.985;
+      p.life-=dt; if(p.life<=0) A.splice(i,1);
+    }
+  }
   if(WHEEL.introT<WHEEL.introDur){
     // 入场：上抛阶段牌轮不动，随后以高速接牌
     WHEEL.introT+=1;
@@ -3044,6 +3090,7 @@ function wheelTick(dt){
   }
   if(WHEEL.decel){
     // 所有牌落位后，由高速平滑减速回正常转速
+    wheelHoverTick();
     WHEEL.omega+=(WHEEL_BASE-WHEEL.omega)*0.07;
     if(Math.abs(WHEEL.omega-WHEEL_BASE)<0.004){ WHEEL.omega=WHEEL_BASE; WHEEL.decel=false; }
     WHEEL.ang-=WHEEL.omega*dt;
@@ -3080,7 +3127,7 @@ function wheelTick(dt){
   if(!WHEEL.down && WHEEL.prog>0){ WHEEL.decayAcc=(WHEEL.decayAcc||0)+dt; while(WHEEL.decayAcc>=WHEEL_DECAY){ WHEEL.decayAcc-=WHEEL_DECAY; WHEEL.prog--; } }
   if(WHEEL.down) WHEEL.decayAcc=0;
   WHEEL.hotT=Math.max(0, WHEEL.hotT-dt*4);
-  WHEEL.selT=Math.max(0,(WHEEL.selT||0)-dt*1.6);
+  WHEEL.selT=Math.max(0,(WHEEL.selT||0)-dt*1.25);
   WHEEL.flash=Math.max(0,(WHEEL.flash||0)-dt*1.4);
   if(WHEEL.prog>=WHEEL.need) wheelPick();
 }
@@ -3127,6 +3174,25 @@ function wheelCenterSlot(i,n){
   const gap=Math.max(8, Math.min(20,(W-24-cw*3)/2));
   const y=H*0.16+ch/2;
   return {x:centerX()-(cw*3+gap*2)/2+cw/2+i*(cw+gap), y:y, cw:cw, ch:ch};
+}
+// 粒子按"所属牌"的层级绘制：排在后面的牌会把前面的粒子盖住
+function drawSparks(arr){
+  if(!arr||!arr.length) return;
+  ctx.save(); ctx.fillStyle=FXC();
+  for(const p of arr){
+    const a=clamp(p.life*3.4,0,1), k=p.s*(0.5+0.5*a);
+    ctx.globalAlpha=a*0.45;                       // 外层柔光
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y-k*1.35); ctx.lineTo(p.x+k*0.85, p.y);
+    ctx.lineTo(p.x, p.y+k*1.35); ctx.lineTo(p.x-k*0.85, p.y);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=a;                            // 内层实心
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y-k); ctx.lineTo(p.x+k*0.6, p.y);
+    ctx.lineTo(p.x, p.y+k); ctx.lineTo(p.x-k*0.6, p.y);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha=1; ctx.restore();
 }
 function drawWheel(){
   const a=WHEEL.ang, N=WHEEL_N, per=WHEEL_PER, R=WHEEL.R, cw=WHEEL.CW, ch=WHEEL.CH;
@@ -3178,7 +3244,12 @@ function drawWheel(){
     if(c<=0) order.push({i:i,ang:ang,c:c});
   }
   order.sort((p,q)=>Math.sin(p.ang)-Math.sin(q.ang));
+  // 粒子按所属牌的层级分桶，画完该牌立刻画它的粒子 → 被更靠前的牌遮住
+  let sparkB=null;
+  if(WHEEL.sparks.length){ sparkB={}; for(const p of WHEEL.sparks){ const z=(p.z==null?9999:p.z); (sparkB[z]||(sparkB[z]=[])).push(p); } }
+  let oidx=0;
   for(const o of order){
+    const zi=oidx++;
     if(WHEEL.gone.includes(o.i)) continue;
     let px=cx+Math.cos(o.ang)*R, py=cy+Math.sin(o.ang)*R;
     const tilt=(WHEEL.tilts&&WHEEL.tilts[o.i])||0;   // 被触碰时的左右倾斜量 0~1
@@ -3224,19 +3295,41 @@ function drawWheel(){
     if(lift>0){
       // 被触碰：仍按原本的叠放顺序绘制（不跳到最上层），以底边为支点向屏幕左侧倾斜
       const ta=0.17*Math.max(tilt,0.001);
+      const ang=rot*0.5 - ta, pivY=py+ch*0.42, gsc=1+0.14*lift;
       ctx.save();
-      ctx.translate(px, py+ch*0.42); ctx.rotate(rot*0.5 - ta); ctx.translate(0, -ch*0.42 - ch*0.02*lift);
-      const gsc=1+0.14*lift;
+      ctx.translate(px, pivY); ctx.rotate(ang); ctx.translate(0, -ch*0.42 - ch*0.02*lift);
       ctx.scale(gsc,gsc);
-      ctx.globalAlpha=0.35*lift; ctx.fillStyle=FXC();
-      rr(-cw*0.7,-ch*0.7,cw*1.4,ch*1.4,6); ctx.fill();
-      ctx.globalAlpha=1;
       paintBack(ctx,0,0,0,cw,ch,1,SKIN);          // 触碰/选中的牌仍显示牌背（跟随当前皮肤）
-      ctx.globalAlpha=0.14*lift; ctx.fillStyle=FXC(); rr(-cw/2,-ch/2,cw,ch,3); ctx.fill();
-      ctx.globalAlpha=1;
-      ctx.strokeStyle=FXC(); ctx.lineWidth=2.2;
-      rr(-cw/2-3,-ch/2-3,cw+6,ch+6,4); ctx.stroke();
+      ctx.strokeStyle=FXC(); ctx.lineWidth=1.6;
+      rr(-cw/2-2,-ch/2-2,cw+4,ch+4,4); ctx.stroke();
       ctx.restore();
+      // 金粒子从牌边向外迸发
+      // 触碰只迸发一次：换成这张牌的那一瞬间喷一束粒子，之后不再持续发射
+      if(lift>0.15 && WHEEL.burstCard!==o.i && WHEEL.sparks.length<340){
+        WHEEL.burstCard=o.i;
+        const hw=cw*0.5+2, hh=ch*0.5+2;            // 与金边描边（±cw/2±2）对齐，避免留空隙
+        const cs=Math.cos(ang), sn=Math.sin(ang);
+        const off=ch*0.42 + ch*0.02*lift;           // 绘制时在缩放之前的位移
+        const cnt=Math.min(90, Math.max(18, Math.ceil((340-WHEEL.sparks.length)/4)));
+        for(let k=0;k<cnt;k++){
+          const side=k%4;
+          let lx=0, ly=0, nx=0, ny=0;
+          if(side===0){ lx=rnd(-hw,hw); ly=-hh; ny=-1; }
+          else if(side===1){ lx=hw; ly=rnd(-hh,hh); nx=1; }
+          else if(side===2){ lx=rnd(-hw,hw); ly=hh; ny=1; }
+          else { lx=-hw; ly=rnd(-hh,hh); nx=-1; }
+          const rx=lx*gsc, ry=ly*gsc - off;          // 与 canvas 变换顺序一致
+          const wx=px + rx*cs - ry*sn;
+          const wy=pivY + rx*sn + ry*cs;
+          const sp=rnd(0.55,1.9);
+          WHEEL.sparks.push({
+            x:wx, y:wy, z:zi,
+            vx:(cs*nx - sn*ny)*sp*rnd(0.9,1.6) + rnd(-0.5,0.5),
+            vy:(sn*nx + cs*ny)*sp*rnd(0.9,1.6) - rnd(0.2,1.0),
+            life:rnd(0.18,0.36), max:0.36, s:rnd(1.0,2.0)
+          });
+        }
+      }
     }else if(sc!==1||al!==0.9||rot>0.002||tilt>0.002){
       ctx.save();
       if(tilt>0.002){ ctx.translate(px, py+ch*0.42); ctx.rotate(rot*0.5 - 0.17*tilt); ctx.translate(0,-ch*0.42); }
@@ -3246,7 +3339,10 @@ function drawWheel(){
     }else{
       ctx.globalAlpha=0.9; drawBack(px,py,0,cw,ch,1); ctx.globalAlpha=1;
     }
+    if(sparkB && sparkB[zi]){ drawSparks(sparkB[zi]); delete sparkB[zi]; }
   }
+  if(sparkB){ for(const k in sparkB) drawSparks(sparkB[k]); }
+  if(WHEEL.hot<0) WHEEL.burstCard=-1;               // 指针离开牌 → 下次触碰重置   // 牌被剔除/碎裂时剩余粒子的兜底
   // 碎裂后的碎片
   if(WHEEL.shards.length){
     for(const p of WHEEL.shards){
@@ -3257,11 +3353,24 @@ function drawWheel(){
     ctx.globalAlpha=1;
   }
   if(WHEEL.selT>0 && WHEEL.selX!=null){
+    // 蓄满抽出：从牌边向外扩散的长方形波纹（三道依次外扩、渐宽渐淡，像白色波纹）
     const t=1-WHEEL.selT;
     ctx.save();
-    ctx.globalAlpha=WHEEL.selT;
-    ctx.strokeStyle=FXC(); ctx.lineWidth=3;
-    ctx.beginPath(); ctx.arc(WHEEL.selX,WHEEL.selY, cw*0.6+t*cw*1.6, 0, Math.PI*2); ctx.stroke();
+    for(let k=0;k<3;k++){
+      const p=clamp((t-k*0.16)/0.62, 0, 1);
+      if(p<=0 || p>=1) continue;
+      const e=easeOut(p);
+      const w=cw*(1+2.3*e), h=ch*(1+2.3*e);
+      ctx.strokeStyle=FXC();
+      ctx.globalAlpha=(1-p)*0.85*(1-k*0.2);
+      ctx.lineWidth=Math.max(0.6, 11*(1-p)*(1-k*0.18));
+      rr(WHEEL.selX-w/2, WHEEL.selY-h/2, w, h, 5); ctx.stroke();
+      // 白色内芯：贴边时像一圈白浪
+      ctx.strokeStyle='#fff';
+      ctx.globalAlpha=(1-p)*0.55*(1-k*0.25);
+      ctx.lineWidth=Math.max(0.4, 6*(1-p)*(1-k*0.2));
+      rr(WHEEL.selX-w/2, WHEEL.selY-h/2, w, h, 5); ctx.stroke();
+    }
     ctx.restore();
   }
   if(WHEEL.flash>0){
@@ -3422,6 +3531,7 @@ function onMove(e){ if(!cur) return;
   if(cur===Pixel) cur.move(p.x,p.y);
   else if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){
     const prev=WHEEL.hot;
+    if(e && e.type==='mousemove'){ WHEEL.hover=true; WHEEL.hx=p.x; WHEEL.hy=p.y; }
     WHEEL.px=p.x; WHEEL.py=p.y; WHEEL.hot=wheelIndexAt(p.x,p.y);
     if(WHEEL.hot>=0){
       WHEEL.hotT=1; WHEEL.lastHot=WHEEL.hot;
@@ -3434,6 +3544,7 @@ function onUp(){ if(cur===Tarot && Tarot.state===Tarot.S.GALLERY){ Tarot.gallery
   if(cur===Pixel) Pixel.up(); else if(cur===Tarot && Tarot.state===Tarot.S.WHEEL){ WHEEL.down=false; WHEEL.hot=-1; WHEEL.lastHot=-1; WHEEL.acc=0; WHEEL.px=null; WHEEL.py=null; WHEEL.holdSpin=0; } }
 cv.addEventListener('mousedown',onDown);
 cv.addEventListener('mousemove',onMove);
+cv.addEventListener('mouseleave',()=>{ WHEEL.hover=false; if(!WHEEL.down) WHEEL.hot=-1; });
 cv.addEventListener('touchstart',e=>{e.preventDefault();onDown(e);},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
 document.addEventListener('mouseup',onUp);
