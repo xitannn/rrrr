@@ -2147,16 +2147,13 @@ tap(p){
 move(dy){ /* 塔罗结果页固定，禁止拖动 */ }
 };
 
-/* ================= 模式二：像素连抽（五回合） ================= */
+/* ================= 模式二：像素连抽（三回合） ================= */
 const P_RAR=[
-{name:'白',score:1,mark:'□',fill:'#fff',ink:'#141018'},
-{name:'绿',score:2,mark:'■',fill:'#4ac86a',ink:'#0d3316'},
-{name:'蓝',score:3,mark:'◆',fill:'#3a8ee6',ink:'#0b2545'},
-{name:'紫',score:4,mark:'▲',fill:'#9a55d6',ink:'#2d1247'},
-{name:'橙',score:5,mark:'★',fill:'#f2913a',ink:'#4a2706'},
-{name:'红',score:6,mark:'✦',fill:'#e24141',ink:'#450c0c'}
+{name:'绿',score:1,mark:'■',fill:'#68c46a',ink:'#0d3316'},
+{name:'蓝',score:2,mark:'◆',fill:'#3a8ee6',ink:'#0b2545'},
+{name:'红',score:3,mark:'✦',fill:'#e24141',ink:'#450c0c'}
 ];
-const DECK_SIZE=100, MAX_ROUND=5, FAN_SIZE=5, PILE_N=5, PILE_SIZE=DECK_SIZE/PILE_N;
+const DECK_SIZE=100, MAX_ROUND=3, FAN_SIZE=5, PILE_N=5, PILE_SIZE=DECK_SIZE/PILE_N;
 const DEAL_MS=3000, DEAL_MOVE_MIN=14;
 
 const Pixel={
@@ -2164,7 +2161,7 @@ CW:0,CH:0,
 S:{IDLE:0,DEAL:1,SHUFFLE:2,FAN:3,REVEAL:4,OVER:5},
 state:0,round:1,roundScores:[], scoreLog:[],roundStat:[],remain:DECK_SIZE,roundBase:0,
 roundFinished:false,gameOver:false,
-deck:[],fan:[],piles:[],picked:null,sideCards:[],stat:[0,0,0,0,0,0],
+deck:[],fan:[],piles:[],picked:null,sideCards:[],stat:[0,0,0],
 floats:[],particles:[],dealCount:0,dealBag:[],fxEmit:null,
 shuffleT:0,fanT:0,revealT:0,goldT:0,goldFxT:0,revealed:false,tip:'按住屏幕发牌',
 dealTimer:null,pointerDown:false,dealX:0,dealY:0,dealSlot:0,lastMX:0,lastMY:0,
@@ -2172,7 +2169,7 @@ resize(){ this.CW=Math.min(70,W/6.2); this.CH=this.CW*1.42; },
 enter(){ /* 保留进度 */ },
 start(){
   this.round=1;this.roundScores=[];this.roundStat=[];this.roundBase=0;this.scoreLog=[];
-  this.gameOver=false;this.stat=[0,0,0,0,0,0];
+  this.gameOver=false;this.stat=[0,0,0];
   this.beginNextRound();
 },
 reset(){ this.stopAutoDeal(); this.start(); },
@@ -2184,7 +2181,7 @@ pilePos(i){
 pileStepY(){ return Math.max(2.2,Math.min(4,H*0.005)); },
 pileLayers(n){ return Math.min(n||0, 13); },   // 每叠最多显示 13 层，避免顶出屏幕
 buildDeckOrdered(){
-  const compose=[34,25,20,15,5,1], arr=[];
+  const compose=[58,30,12], arr=[];
   for(let r=0;r<compose.length;r++) for(let k=0;k<compose[r];k++) arr.push(r);
   for(let i=arr.length-1;i;i--){const j=ri(0,i);[arr[i],arr[j]]=[arr[j],arr[i]];}
   return arr;
@@ -2200,7 +2197,7 @@ buildPiles(){
 },
 pileRemain(){ return this.piles.reduce((a,p)=>a+p.length,0); },
 pickRarity(){ let r=Math.random(),acc=0;
-  for(let i=0;i<6;i++){acc+=[0.34,0.25,0.20,0.15,0.05,0.01][i]; if(r<acc) return i;}
+  for(let i=0;i<3;i++){acc+=[0.60,0.29,0.11][i]; if(r<acc) return i;}
   return 0; },
 dealSourcePos(){                              // 发牌点：就是手指位置
   if(this.pointerDown) return {x:this.dealX, y:Math.min(this.dealY, H*0.86)};
@@ -2334,7 +2331,7 @@ spawnEdgeParticle(color){
   const ang=(fromLeft?1:-1)*(0.3+Math.random()*0.7), sp=4+Math.random()*8;
   this.particles.push({x:ex,y:ey,vx:Math.cos(ang)*sp*(fromLeft?1:-1),
     vy:-Math.abs(Math.sin(ang)*sp)-Math.random()*2, g:0.10+Math.random()*0.08,
-    col:Math.random()<0.6?color:P_RAR[ri(0,5)].fill, t:0, life:90+Math.random()*70, size:3+Math.random()*4});
+    col:Math.random()<0.6?color:P_RAR[ri(0,2)].fill, t:0, life:90+Math.random()*70, size:3+Math.random()*4});
 },
 confirmReveal(){
   if(!this.picked || this.revealed) return;
@@ -2345,7 +2342,7 @@ confirmReveal(){
   this.scoreLog.push({round:this.round,rar:this.picked.rar,score:R.score});
   this.floats.push({x:centerX(),y:H*0.46-this.CH*0.8,txt:'+'+R.score,t:0});
   particleBurst(this.particles,centerX(),H*0.46,R.fill,20,4);
-  if(R.score>=5 && this.fxEmit && this.fxEmit.left<30) this.fxEmit.left=30;
+  if(R.score>=3 && this.fxEmit && this.fxEmit.left<30) this.fxEmit.left=30;
   this.state=this.S.OVER;
   document.getElementById('btnClose').style.display='block';
   this.renderDex();
@@ -2542,7 +2539,7 @@ frame(){
     if(this.state===S.REVEAL){
       p.t=Math.min(1,p.t+0.055);
       p.x+=(p.tx-p.x)*0.18; p.y+=(p.ty-p.y)*0.18;
-      const hi=P_RAR[p.rar].score>=5;
+      const hi=P_RAR[p.rar].score>=3;
       if(!hi || (p.spinAcc!=null && p.spinAcc>=Math.PI*2)) p.rot+=(p.trot-p.rot)*0.18;
       if(p.t>0.45) p.flipT=Math.min(hi?3:1,p.flipT+0.07);
       const ax=flipAx(p.flipT);
@@ -2555,12 +2552,12 @@ frame(){
       this.drawCardFace(p.x,p.y,drawRot,this.CW*(p.scale||1.25),this.CH*(p.scale||1.25),p.rar,ax);
       if(ax===0 && !p.flashDone){
         p.flashDone=true;
-        if(P_RAR[p.rar].score>=5) this.triggerRareFx(P_RAR[p.rar].fill, P_RAR[p.rar].score>=6?300:150);
+        if(P_RAR[p.rar].score>=3) this.triggerRareFx(P_RAR[p.rar].fill, 300);
         particleBurst(this.particles,p.x,p.y,P_RAR[p.rar].fill,14,4);
       }
       if(p.t>=1 && p.flipT>=(hi?3:1)) this.confirmReveal();
     }else{
-      const isHi=P_RAR[p.rar].score>=5;
+      const isHi=P_RAR[p.rar].score>=3;
       let drawRot=Math.sin(this.revealT*0.05)*0.03;
       if(isHi){ if(p.spinAcc==null)p.spinAcc=0;
         if(p.spinAcc<Math.PI*2){const d=Math.min(Math.PI*2-p.spinAcc,0.06);p.spinAcc+=d;}
@@ -2682,6 +2679,11 @@ function goldSweep(x,y,rot,w,h,prog){
           ②可选在线大模型（OpenAI 兼容接口，配置存 localStorage，失败自动回退本地） */
 const AI={
   cfgKey:'tarot_ai_cfg',
+  // 免费在线通道（Pollinations，OpenAI 兼容、免 key、允许跨域）
+  FREE:{url:'https://text.pollinations.ai/openai', model:'openai', free:true},
+  modeKey:'tarot_ai_mode',
+  mode(){ const m=localStorage.getItem(this.modeKey); if(m) return m; return (this.cfg()&&this.cfg().key)?'own':'local'; },
+  setMode(m){ localStorage.setItem(this.modeKey,m); },
   cfg(){ try{return JSON.parse(localStorage.getItem(this.cfgKey)||'null')||null;}catch(e){return null;} },
   saveCfg(o){ localStorage.setItem(this.cfgKey, JSON.stringify(o)); },
   clearCfg(){ localStorage.removeItem(this.cfgKey); },
@@ -2697,7 +2699,8 @@ const AI={
   },
   posName(i,n){ const a=['过去 / 起因','现在 / 现状','未来 / 走向']; return a[i]||('第'+(i+1)+'张'); },
   // —— 多样化素材库：让每次措辞不再雷同 ——
-  _rng(list,q){ const h=hashStr((q||'')+'|'+(list||[]).map(c=>c.name+(c.rev?1:0)).join(',')); return mulberry32(h); },
+  salt:0,
+  _rng(list,q){ const h=hashStr((q||'')+'|'+(list||[]).map(c=>c.name+(c.rev?1:0)).join(',')+'|'+(this.salt||0)); return mulberry32(h); },
   _pick(rng,arr){ return arr[Math.floor(rng()*arr.length)%arr.length]; },
   _lead(list){ // 开场总述：多种说法
     return [
@@ -2742,84 +2745,230 @@ const AI={
       '慢一点没关系，给自己留出转圜的余地。',
       '此刻的克制，是为了将来走得更远。']);
   },
-  // 本地引擎：生成结构化解读 HTML（种子驱动，措辞多样）
+  // —— 画面速写：为每张牌生成独有的画面感（大阿用牌面描述，小阿按元素+牌阶现写） ——
+  _suitEl(c){
+    if(!c) return null;
+    if(c.suit==='权杖') return '火';
+    if(c.suit==='圣杯') return '水';
+    if(c.suit==='宝剑') return '风';
+    if(c.suit==='星币') return '土';
+    return null;
+  },
+  _stage(c){
+    const r=c.rank||0;
+    if(r<=2) return '像是刚刚起念的那一下，什么都还没成形';
+    if(r<=4) return '像事情刚有了轮廓，还在慢慢加固';
+    if(r<=6) return '像走到半程，需要回头校准一次方向';
+    if(r<=8) return '像被推到紧绷处，力气全用在了对抗上';
+    if(r<=10) return '像一季走到收尾，该结算的都在结算';
+    if(r<=12) return '像刚接过手的活计，带着一点小心翼翼的兴奋';
+    if(r<=13) return '像策马疾行的身影，速度远比稳妥重要';
+    return '像坐稳了位置的人，气度里带着分量';
+  },
+  _scene(c,rng){
+    if(c.arc==='大') return c.img;
+    const mood={
+      '火':['荒原上刚窜起来的火苗','被风推着走的野火','一簇烧在手心里的火把','落日里滚烫的沙与热风'],
+      '水':['杯沿上晃动的月光','漫过脚踝的潮水','倒影里那张没说完的脸','湖面下看不见的暗流'],
+      '风':['把云吹成刀刃的风','高空里一道冷白的光','灰蓝天幕下悬着的一枚剑影','风暴眼里那种奇异的安静'],
+      '土':['石阶上温热的尘土','慢火里旋着的陶土','攀着墙生长的藤与果','山岩之间沉甸甸的一季收成']
+    };
+    const el=this._suitEl(c)||'土';
+    return this._pick(rng,mood[el])+'，'+this._stage(c)+'。';
+  },
+  _kws(c){
+    const m=(c.rev?c.revMean:c.upMean)||'';
+    return m.split('、').slice(0,3).join('、');
+  },
+  // 把抽象牌义落到一个具体到能看见的场景（只用在「现在」这张，避免重复啰嗦）
+  _concrete(rng,ctx,rev){
+    const P={
+      '感情':{
+        up:['也许就发生在一个深夜：你盯着对话框，把那句「在吗」打好又删掉',
+            '可能是某个很普通的下午，你忽然不想再猜了，想直接问一句',
+            '也可能是你终于允许自己承认——你其实很在意'],
+        rev:['也许是你把想说的一半咽了回去，另一半变成了冷淡',
+             '可能是你明明在等一个回音，却假装自己毫不在意']},
+      '事业':{
+        up:['也许就在下一个会议上：你把准备好的那句话说出口，局面从此不一样',
+            '可能是你把那份没敢发的方案，重新打开又改了一遍',
+            '也可能是有人问「这事你能接吗」，你第一次没有先说「再看看」'],
+        rev:['也许是你把一个明明想做的机会，用「我还没准备好」推了出去',
+             '可能是你每天都在忙，却说不清忙的到底是哪件事']},
+      '财运':{
+        up:['也许就藏在最近那笔你犹豫了很久的支出里',
+            '可能是你终于坐下来，把每个月的钱掰开算了一次',
+            '也可能是某个「顺手就买了」的瞬间，决定了接下来的松紧'],
+        rev:['也许是你嘴上说不在意价格，付款时却皱了眉',
+             '可能是某个一直在漏钱的小习惯，你其实早就知道']},
+      '学业':{
+        up:['也许就是今晚：你把那个一直绕开的知识点，认真看了第二遍',
+            '可能是你终于把大目标拆成了今天能做的一小格',
+            '也可能是你第一次承认，自己不是学不会，只是没开始'],
+        rev:['也许是你打开书十分钟，又合上刷了半小时手机',
+             '可能是你把「明天再说」重复了第七天']},
+      '健康':{
+        up:['也许就是今晚早点睡那一个小时',
+            '可能是你终于把那次拖着没去的检查约上了',
+            '也可能是你允许自己在忙里停下来喝口水'],
+        rev:['也许是你又一次用「忙完这阵」推迟了休息',
+             '可能是身体已经提醒过你两三次，你都笑着带过了']},
+      '综合':{
+        up:['也许就是那件你反复想起、却一直没动手的小事',
+            '可能是你终于愿意为它腾出一个下午',
+            '也可能是你对某个人说出了一句早该说的话'],
+        rev:['也许是你把决定一再往后推，推到自己也累了',
+             '可能是你心里其实有答案，只是不敢承认']}
+    };
+    const m=P[ctx]||P['综合'];
+    return this._pick(rng, rev?m.rev:m.up);
+  },
+  _psy(rng,rev,i){
+    const pool=rev? [
+      '逆位的牌常出现在「心里有话说、却咽了回去」的时候——你可以问问自己，究竟在顾虑什么。',
+      '倒过来的牌，往往意味着能量堵在某个说不清的地方。先把那股别扭感找到，比硬推有用得多。',
+      '它也可能是提醒：这件事你其实早有答案，只是还没允许自己去相信。',
+      '逆位不代表坏事，它更像是把灯转到背面，让你看见平时不肯看的那一块。'
+    ] : [
+      '正位的牌像一句被说出口的话，清晰得让人有点不好意思。',
+      '如果读到这里你觉得「被说中了」，那通常就是此刻最该被听见的部分。',
+      '它不承诺结果，只是在告诉你：这条路是走得通的。',
+      '牌面朝上的时候，能量是肯配合你的，剩下的只看你伸不伸手。'
+    ];
+    const base=Math.floor(rng()*pool.length);
+    return pool[(base+(i||0))%pool.length];   // 每张牌尽量错开，避免三张都撞同一句
+  },
+  // —— 三张牌之间的关系：元素配比、正逆节奏、故事线 ——
+  _arc(list,rng){
+    const nm=list.map(c=>'「'+c.name+'」');
+    const els=list.map(c=>this._suitEl(c)).filter(Boolean);
+    const revN=list.filter(c=>c.rev).length, upN=list.length-revN;
+    let s=this._pick(rng,[
+      '三张牌摊开，像一段有起承转合的小故事',
+      '把它们连起来读，起伏才真正显出来',
+      '三张牌不是三个孤立的词，而是一条有方向的线'
+    ]);
+    s+='：'+nm[0]+'先定下底色，'+nm[1]+'把局面推到此刻，'+nm[2]+'接住往后的方向。';
+    if(els.length>=2){
+      const cnt={}; els.forEach(e=>{ cnt[e]=(cnt[e]||0)+1; });
+      const top=Object.keys(cnt).sort((p,q)=>cnt[q]-cnt[p])[0];
+      if(cnt[top]>=2){
+        const role={'火':'推动力','水':'情绪底色','风':'想法与言语','土':'现实条件'}[top]||'某种能量';
+        s+='牌里「'+top+'」的气息最重，说明这件事的'+role+'占了主导，其它部分只能跟着它走。';
+      }else{
+        s+='火、水、风、土各说各话，说明这件事同时被冲动、情感、理智和现实四股力量扯着，难怪你会觉得拧巴。';
+      }
+    }
+    s+= revN===0 ? '三张全正位，能量是顺着走的——难得的一个顺风局，别自己先踩刹车。'
+      : revN===1 ? '只有'+(list.find(c=>c.rev)||{}).name+'是逆位，像整条线上打了一个结：解开它，路立刻顺。'
+      : revN===2 ? '两张逆位，说明卡点多半不在外面，而是你自己还没松口。'
+      : '三张全逆位。这不是坏消息，而是在说：现在该做的是收，不是冲。';
+    return s;
+  },
+  // 本地引擎：生成结构化、有画面的解读
   local(list,q){
-    const ctx=this.context(q);
-    const rng=this._rng(list,q);
+    const ctx=this.context(q), rng=this._rng(list,q), lean=this._lean(list);
     const tone=this._tonePool()[ctx];
-    const lead=this._pick(rng,this._lead());
-    const lean=this._lean(list);
+    const topic=(q&&q.trim())?q.trim():'你心里那件事';
     let h='';
-    h+='<p>'+lead+'。三张牌依次落在 <span class="pos">过去 · 现在 · 未来</span>，'+
-       '结合「'+ctx+'」来看，整体倾向'+(lean?'更偏积极':'更需谨慎')+'。</p>';
+    h+='<p>'+this._pick(rng,[
+      '牌已经摊开了，先把呼吸放慢一点。',
+      '我们不看结论，先看画面。',
+      '这副牌想说的话，恰好绕着你最放不下的那一处。',
+      '三张牌各就各位，故事其实已经开始讲了。'
+    ])+(q&&q.trim()? '你问的是「<span class="pos">'+topic+'</span>」，' : '你没写下具体的问题，那就把你心里那件事摆在中间，')+
+      '三张牌依次落在 <span class="pos">过去 · 现在 · 未来</span>，'+
+      this._pick(rng, lean?[
+        '整体气息是往上走的，虽然有波折，但方向没有错。',
+        '底色偏亮，说明底子还在，只是需要你把手伸出去。'
+      ]:[
+        '整体气息偏收敛，不是没有路，而是时机还在酝酿。',
+        '色调偏沉，说明此刻更适合先安顿好自己，再谈推进。'
+      ])+'</p>';
+
+    h+='<h4>一、三张牌的画面</h4>';
     list.forEach((c,i)=>{
       const rev=!!c.rev, mean=rev?c.revMean:c.upMean;
-      const slot=i===0?this._pick(rng,['这是事情的起点与根基','它交代了来龙去脉','埋下伏笔的地方在这里'])
-                 :i===1?this._pick(rng,['这是当下最该看清的课题','此刻的焦点落在这一处','它映着你现在的真实处境'])
-                        :this._pick(rng,['这是它可能的走向','前方的路在这里微微显形','结尾的调子由它来定']);
-      const dir=rev?this._pick(rng,['逆位说明这股能量此刻有些受阻、需要被转化','逆位提醒你别硬推，先看它卡在哪','倒过来的牌，往往是要你换个角度对待'])
-                   :this._pick(rng,['正位意味着这股能量正顺畅展开','正位说明它站在这件事的正面','牌面朝上，是可以直接借力的信号']);
-      const el=c.el?('它带着「'+c.el.split(' · ')[0]+'」的元素气息，'):'';
-      h+='<h4>'+(i+1)+'. '+this.posName(i)+' —— '+c.name+'（'+(rev?'逆位':'正位')+'）</h4>';
-      h+='<p>'+c.img+'</p>';
-      h+='<p>'+slot+'。牌义指向「'+mean+'」——'+el+dir+'，'+
-         this._pick(rng, rev?tone.bad:tone.good)+'。</p>';
+      const slot=i===0?this._pick(rng,['它落在「过去 / 起因」，是这件事最初埋下的那颗种子','它对应「过去 / 起因」，交代了眼下局面的来处','它站在「过去 / 起因」，是整件事的伏笔'])
+        :i===1?this._pick(rng,['它坐镇「现在 / 现状」，是你此刻真正要面对的那道题','它对应「现在 / 现状」，把眼下的处境摊开给你看','它站在「现在 / 现状」，是此刻最该被看见的一处'])
+        :this._pick(rng,['它指向「未来 / 走向」，趋势在这里转弯','它对应「未来 / 走向」，是这件事往前走的那个方向','它站在「未来 / 走向」，等你去接住']);
+      const elToken=c.el?c.el.split(' · ')[0]:'';
+      h+='<h4>'+this.posName(i)+' · '+c.name+'（'+(rev?'逆位':'正位')+'）</h4>';
+      h+='<p>'+(c.arc==='大' ? ('牌面上：'+c.img) : ('画面里，'+this._scene(c,rng)))+'</p>';
+      h+='<p>'+slot+'。牌义落在「<span class="pos">'+this._kws(c)+'</span>」——'+
+         (elToken?('它带着「'+elToken+'」的气息，'):'')+
+         this._pick(rng, rev?[
+           '倒过来看，这股能量此刻是被压住的，得先找到它卡在哪。',
+           '逆位让这张牌的力道收了回去，用错了地方就会变成内耗。',
+           '它不是否定，而是要求你把这件事再想深一层。'
+         ]:[
+           '正位意味着这股能量正顺畅地展开，可以放心借力。',
+           '牌面朝上，是能直接上手的一段势能。',
+           '它站在这件事的正面，说话是算数的。'
+         ])+(function(a){ return a[i%a.length]; })(rev?tone.bad:tone.good)+'。</p>';
+      h+='<p>'+this._psy(rng,rev,i)+'</p>';
+      if(i===1) h+='<p>落到生活里，'+this._concrete(rng,ctx,rev)+'。——这类细节比牌义本身更能说明你此刻的位置。</p>';
     });
-    h+='<h4>综合建议</h4>'+ this.advice(list,q,ctx,rng);
+
+    h+='<h4>二、三张牌连起来看</h4><p>'+this._arc(list,rng)+'</p>';
+    h+='<h4>三、落到行动上</h4>'+this.advice(list,q,ctx,rng);
+    h+='<h4>四、最后一句话</h4><p>'+this._pick(rng,[
+      '牌不会替你走那一步，但它已经把你站的地方照亮了。',
+      '答案一直都在你身上，牌只是把它擦亮了一点。',
+      '允许事情慢一点，也允许自己不确定——这两件事都不丢人。',
+      '你不需要一次就走对，只需要别在原地把自己耗干。',
+      '把今天读到的这一句带走，剩下的交给时间。'
+    ])+'</p>';
     h+='<p style="color:#a8a3b0;margin-top:8px">※ 塔罗是自我对话的镜子，解读仅供参考，最终决定权在你手中。</p>';
     return h;
   },
-  // 综合建议：结合问题、语境、三张具体牌动态生成，措辞多样
+  // 综合建议：三条能落地的事 + 一句风险提醒
   advice(list,q,ctx,rng){
-    rng=rng||this._rng(list,q);
-    const pos=[], rev=[];
-    list.forEach(c=>{ (c.rev?rev:pos).push(c.name); });
-    const now=list[1]||list[0], fut=list[2]||list[1];
-    const nowMean=now?(now.rev?now.revMean:now.upMean):'', futMean=fut?(fut.rev?fut.revMean:fut.upMean):'';
-    const topic=(q&&q.trim())?q.trim():'你关心的这件事';
-    const lean=this._lean(list);
-    // 开头：呼应问题（多种说法）
-    const open=this._pick(rng,[
-      '把目光拉回「'+topic+'」，','再说回「'+topic+'」这件事，','落到你的问题上——「'+topic+'」，',
-      '回到最开始那个疑问「'+topic+'」，']);
-    let s='<p>'+open+'三张牌里正位 '+pos.length+' 张'+(pos.length?'（'+pos.join('、')+'）':'')+
-       '、逆位 '+rev.length+' 张'+(rev.length?'（'+rev.join('、')+'）':'')+'，'+
-       this._pick(rng, lean?['整体能量偏顺，但仍要你主动接住。','大势向好，接下来看你如何落子。']
-                        :['整体偏收，急着推进反而费力。','现在是收敛期，硬冲不如蓄力。'])+'</p>';
-    // 中段：抓住"现在"这张牌给出可执行落点
+    const now=list[1]||list[0], fut=list[2]||list[1], revN=list.filter(c=>c.rev).length;
     const verbs=this._nowVerb()[ctx]||this._nowVerb()['综合'];
-    s+='<p>当下这张「'+(now?now.name:'')+'」在说：'+nowMean+'。'+
-       '对应到「'+ctx+'」，'+this._pick(rng,verbs)+'，让「'+(now?now.name:'')+'」的能量真正落到实处。'+
-       this._pick(rng,['别只停在想，动起来答案才会浮现。','小步试错，好过原地反复权衡。','先做最难的那一步，剩下的会顺很多。'])+'</p>';
-    // 尾段：呼应"未来"收束
-    s+='<p>望向未来，「'+(fut?fut.name:'')+'」指向'+futMean+'。'+this._close(list,lean)+'</p>';
-    // 随机点缀一句"提醒"（约半数出现，进一步打破雷同）
-    if(rng()>0.5){
-      s+='<p>'+this._pick(rng,[
-        '提醒你一句：牌是镜子不是命令，真正拍板的始终是你。',
-        '如果哪句牌义戳中了你，那往往就是此刻最该被听见的声音。',
-        '过些时日可以再抽一次，看看同一件事的能量有没有变化。',
-        '把这份解读当成一次和自己安静对话的机会，就够了。'])+'</p>';
-    }
-    return s;
+    const s=[];
+    s.push('<span class="pos">① 先动一件小事</span>：'+this._pick(rng,verbs)+'。做了再谈感受，很多答案是自己做出来的。');
+    s.push('<span class="pos">② 关于「'+now.name+'」</span>：'+(now.rev?now.revMean:now.upMean)+'。'+
+      this._pick(rng,['把它当成一句提醒，而不是判决书。','这条如果让你不舒服，多半正说到了要紧处。','把它记下来，过一周回头看，你会发现自己已经移动了位置。']));
+    s.push('<span class="pos">③ 盯住方向</span>：'+(fut.rev
+      ? ('「'+fut.name+'」是逆位，说明这条路暂时不宜硬闯，先找一处能发力的侧门。')
+      : ('「'+fut.name+'」是正位，方向已经给出来了，剩下的只是拆成能执行的步骤。')));
+    if(revN>=2) s.push('<span class="pos">④ 还有一句提醒</span>：逆位偏多的时候，最容易发生的不是失败，而是你自己先撤了。');
+    return '<p>'+s.join('</p><p>')+'</p>';
   },
   _lean(list){ let s=0; list.forEach(c=>{ if(c.rev) s-=1; else s+=1; }); return s>=0; },
   // 在线大模型（OpenAI 兼容 /chat/completions）
-  async online(list,q){
-    const cfg=this.cfg(); if(!cfg||!cfg.url||!cfg.key) throw new Error('no-cfg');
+  async online(list,q,ov){
+    const cfg=ov||this.cfg(); if(!cfg||!cfg.url||(!cfg.key&&!cfg.free)) throw new Error('no-cfg');
     const cards=list.map((c,i)=>(i+1)+'. '+this.posName(i)+'：'+c.name+'（'+(c.rev?'逆位':'正位')+'）'+
       '｜牌面：'+c.img+'｜牌义：'+(c.rev?c.revMean:c.upMean)).join('\n');
-    const prompt='你是资深塔罗解读师。用户问题：「'+(q||'未指定')+'」。\n抽到的三张牌（过去/现在/未来）：\n'+cards+
-      '\n请结合问题，用中文分「逐张解读」和「综合建议」两部分作答，语气温和、克制、不说教，避免绝对化断言，约300字。';
-    const res=await fetch(cfg.url,{method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+    const prompt='你是一位很会讲故事的塔罗解读师，擅长把牌面的画面、象征和提问者的处境连成一段有画面感的叙述。\n'+
+      '用户问题：「'+(q||'未指定')+'」。\n抽到的三张牌（过去/现在/未来）：\n'+cards+'\n'+
+      '请用中文作答，结构如下：\n'+
+      '① 开场一句意象化的引入；\n'+
+      '② 逐张解读：先描写牌面画面，再讲象征含义，再扣到提问者的处境（每张 3-4 句）；\n'+
+      '③ 三张牌连起来看：点出元素、正逆的节奏与故事的转折；\n'+
+      '④ 三条可以落地去做的具体建议（要具体、能执行，不要空话）；\n'+
+      '⑤ 最后一句话，短、温柔、有余味。\n'+
+      '要求：有画面、有温度、有细节，多用短句和具体场景，避免"注定""必然"这类绝对断言，不要罗列套话，约 600 字。';
+    const hdr={'Content-Type':'application/json'};
+    if(cfg.key) hdr['Authorization']='Bearer '+cfg.key;
+    const res=await fetch(cfg.url,{method:'POST',headers:hdr,
       body:JSON.stringify({model:cfg.model||'gpt-4o-mini',temperature:0.8,
         messages:[{role:'user',content:prompt}]})});
-    if(!res.ok) throw new Error('http '+res.status);
+    if(!res.ok) throw new Error(res.status===402||res.status===429?'rate':('http '+res.status));
     const data=await res.json();
     const txt=(data.choices&&data.choices[0]&&(data.choices[0].message?.content||data.choices[0].text))||'';
     if(!txt) throw new Error('empty');
-    return '<p>'+txt.split(/\n{1,}/).filter(Boolean).map(s=>s.replace(/^#+\s*/,'')).join('</p><p>')+'</p>';
+    // 把模型爱用的 Markdown 记号转成本面板认识的样子
+    const clean=t=>{
+      let x=t.trim().replace(/^\s*(?:-|\*|•)\s+/,'· ').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(?=\S)/g,'').replace(/\*/g,'');
+      if(/^<strong>[^<]{1,30}<\/strong>$/.test(x)) x=x.replace(/^<strong>([^<]{1,30})<\/strong>$/,'<h4>$1</h4>');
+      return x;
+    };
+    return txt.split(/\n{1,}/).filter(Boolean)
+      .map(s=>clean(s.replace(/^#+\s*/,'')))
+      .map(s=>s.startsWith('<h4>')?s:('<p>'+s+'</p>')).join('');
   }
 };
 const aiMask=document.getElementById('aiMask'), aiBody=document.getElementById('aiBody'),
@@ -2829,21 +2978,32 @@ function openAI(){
   if(list.length<3) return;
   aiMask.style.display='flex';
   aiQ.textContent=Tarot.question?('问：'+Tarot.question):'本次占卜';
-  const cfg=AI.cfg();
-  aiFoot.innerHTML=(cfg&&cfg.url)
-    ? '当前：在线大模型 · <a id="aiCfgBtn">重新配置</a> · <a id="aiUseLocal">用本地引擎</a>'
-    : '当前：本地离线引擎 · <a id="aiCfgBtn">接入在线大模型</a>';
-  renderAI(true);
+  aiFoot.innerHTML=aiFootHTML();
+  renderAI(AI.mode());
+}
+function aiFootHTML(){
+  const m=AI.mode(), cfg=AI.cfg();
+  if(m==='own') return '当前：在线大模型'+(cfg&&cfg.model?(' · '+cfg.model):'')+' · <a id="aiCfgBtn">重新配置</a> · <a id="aiFree">免费在线</a> · <a id="aiUseLocal">用本地引擎</a>';
+  if(m==='free') return '当前：免费在线模型 · <a id="aiUseLocal">用本地引擎</a> · <a id="aiCfgBtn">换成自己的模型</a>';
+  return '当前：本地离线引擎 · <a id="aiFree">免费在线解读</a> · <a id="aiCfgBtn">接入自己的模型</a>';
 }
 function closeAI(){ aiMask.style.display='none'; }
-async function renderAI(useOnline){
+async function renderAI(mode){
   const list=Tarot.pickedCards||[];
-  const cfg=AI.cfg();
-  if(useOnline && cfg && cfg.url && cfg.key){
-    aiBody.innerHTML='<div class="loading">✨ AI 正在结合你的问题解读…</div>';
-    try{ aiBody.innerHTML=await AI.online(list,Tarot.question); return; }
-    catch(e){ aiBody.innerHTML='<div class="loading">在线接口不可用，已切换本地引擎解读…</div>';
-      await new Promise(r=>setTimeout(r,500)); }
+  if(!mode) mode=AI.mode();
+  let ov=null;
+  if(mode==='own'){ const c=AI.cfg(); if(c&&c.url&&c.key) ov=c; else mode='local'; }
+  if(mode==='free') ov=AI.FREE;
+  if(mode!=='local'){
+    aiBody.innerHTML='<div class="loading">✨ '+(mode==='free'?'免费模型正在解读（首次约 5~15 秒）…':'AI 正在结合你的问题解读…')+'</div>';
+    try{ aiBody.innerHTML=await AI.online(list,Tarot.question,ov); return; }
+    catch(e){
+      const msg=(String(e&&e.message)==='rate')
+        ? '免费通道刚才被用过（每 45 秒限一次，稍等再点「免费在线解读」）——先给你本地版解读…'
+        : '在线接口不可用，已切换本地引擎解读…';
+      aiBody.innerHTML='<div class="loading">'+msg+'</div>';
+      await new Promise(r=>setTimeout(r,700));
+    }
   }
   aiBody.innerHTML=AI.local(list,Tarot.question);
 }
@@ -2859,10 +3019,11 @@ aiFoot.addEventListener('click',e=>{
     const model=prompt('模型名（可留空默认 gpt-4o-mini）：', (AI.cfg()||{}).model||'gpt-4o-mini');
     if(model===null) return;
     AI.saveCfg({url:url.trim(),key:key.trim(),model:(model.trim()||'gpt-4o-mini')});
-    aiFoot.innerHTML='当前：在线大模型 · <a id="aiCfgBtn">重新配置</a> · <a id="aiUseLocal">用本地引擎</a>';
-    renderAI(true);
+    AI.setMode('own'); aiFoot.innerHTML=aiFootHTML(); renderAI('own');
   } else if(t.id==='aiUseLocal'){
-    renderAI(false);
+    AI.setMode('local'); aiFoot.innerHTML=aiFootHTML(); renderAI('local');
+  } else if(t.id==='aiFree'){
+    AI.setMode('free'); aiFoot.innerHTML=aiFootHTML(); renderAI('free');
   }
 });
 
@@ -3148,6 +3309,7 @@ function wheelPick(){
     WHEEL.cy+Math.sin(WHEEL.ang+i*WHEEL_PER)*WHEEL.R, FXC(), 30, 4.5);
   c.fx=WHEEL.selX; c.fy=WHEEL.selY; c.ft=0;   // 选中后向左飞入的起点
   Tarot.pickedCards.push(c);
+  if(Tarot.pickedCards.length===3) AI.salt=Math.floor(Math.random()*999999);
   Tarot.syncHud();
   // 三张齐：其余牌碎裂消失，同时三张选中的牌缓慢合并到中间横向位置
   if(Tarot.pickedCards.length>=3){
@@ -3494,7 +3656,7 @@ const ui={
     document.getElementById('roundLog').innerHTML=Pixel.roundScores.map((s,i)=>
       '<div><span>第 '+(i+1)+' 小回合</span><span>'+s+' 分</span></div>').join('')+
       '<div style="border-top:1px solid #bbb;margin-top:3px;padding-top:3px"><span>累计总分</span><span>'+Pixel.total()+' 分</span></div>';
-    const st=isOver?[0,0,0,0,0,0]:(Pixel.roundStat[last]||Pixel.stat);
+    const st=isOver?[0,0,0]:(Pixel.roundStat[last]||Pixel.stat);
     document.getElementById('resDex').innerHTML=P_RAR.map((r,i)=>
       '<div><span><span style="display:inline-block;width:8px;height:8px;background:'+r.fill+
       ';border:1px solid #141018"></span> '+r.name+'（'+r.score+'分）</span><span>×'+st[i]+'</span></div>').join('');
@@ -3580,7 +3742,7 @@ function loop(){
 (function(){
   const t=document.getElementById('miniTarot'), p=document.getElementById('miniPixel');
   if(!t||!p) return;
-  P_RAR.slice(0,6).forEach(r=>{
+  P_RAR.slice(0,3).forEach(r=>{
     const s=document.createElement('span');
     s.style.cssText='display:inline-block;width:12px;height:16px;background:'+r.fill+
       ';border:2px solid #141018;box-shadow:2px 2px 0 #141018';
